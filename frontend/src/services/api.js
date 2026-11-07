@@ -1,4 +1,4 @@
-const RAW_BASE = import.meta.env.VITE_API_BASE_URL || 'https://opsrecall-backend.onrender.com';
+const RAW_BASE = import.meta.env.VITE_API_BASE_URL || 'https://opsrecall-ai.onrender.com/';
 const API_BASE = RAW_BASE.replace(/\/+$/, '');
 
 async function request(endpoint, options = {}) {
