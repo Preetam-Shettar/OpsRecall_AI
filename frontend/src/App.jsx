@@ -26,6 +26,7 @@ export default function App() {
   const [backendHealthy, setBackendHealthy] = useState(false);
   const [isSubmitting, setIsSubmitting] = useState(false);
   const [isRefreshing, setIsRefreshing] = useState(false);
+  const [isSidebarOpen, setIsSidebarOpen] = useState(false);
 
   useEffect(() => {
     document.documentElement.setAttribute('data-theme', theme);
@@ -66,6 +67,7 @@ export default function App() {
     if (nextView === activeView) return;
     setViewHistory((prev) => [...prev, nextView]);
     setActiveView(nextView);
+    setIsSidebarOpen(false);
   }
 
   function handleBack() {
@@ -149,6 +151,8 @@ export default function App() {
           total_incidents: dashboard.total_incidents,
           stored_memories: dashboard.stored_memories,
         }}
+        isOpen={isSidebarOpen}
+        onClose={() => setIsSidebarOpen(false)}
       />
 
       <div className="app-main-viewport">
@@ -161,6 +165,7 @@ export default function App() {
           onBack={handleBack}
           onRefresh={handleRefresh}
           isRefreshing={isRefreshing}
+          onToggleSidebar={() => setIsSidebarOpen((prev) => !prev)}
         />
 
         <main className="content-container">
