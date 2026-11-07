@@ -30,6 +30,7 @@ OpsRecall AI is a prototype incident-response assistant that analyzes engineerin
 
 ## Notes
 
-- The app runs without Groq or Hindsight credentials by falling back to deterministic local analysis and memory storage.
+- The app runs without Groq or Hindsight credentials by falling back to deterministic local analysis and memory storage. The analysis panel labels local analysis and any fallback from Groq.
+- When `GROQ_API_KEY` is configured, incident analysis uses Groq's JSON response mode and validates the result before returning it.
 - If a real Hindsight instance is configured, the backend will use it automatically for recall and retention.
 - This is a working prototype designed for a demo flow rather than production deployment.

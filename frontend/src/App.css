@@ -209,6 +209,11 @@ textarea {
   margin-top: 12px;
 }
 
+.analysis-notice {
+  color: #fde68a;
+  font-size: 13px;
+}
+
 .badge {
   background: rgba(59, 130, 246, 0.14);
   border: 1px solid rgba(59, 130, 246, 0.4);

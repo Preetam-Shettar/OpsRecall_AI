@@ -1,8 +1,33 @@
 from __future__ import annotations
 
-from typing import Any, Dict, Optional
+from typing import Literal
 
 from pydantic import BaseModel, Field
+
+
+class PossibleCause(BaseModel):
+    cause: str
+    evidence: list[str]
+    confidence: Literal["low", "medium", "high"]
+
+
+class RelatedMemoryInsight(BaseModel):
+    incident_id: str
+    lesson: str
+
+
+class IncidentAnalysis(BaseModel):
+    summary: str
+    symptoms: list[str]
+    possible_causes: list[PossibleCause]
+    supporting_evidence: list[str]
+    related_memory_insights: list[RelatedMemoryInsight]
+    recommended_checks: list[str]
+    missing_information: list[str]
+    confidence: Literal["low", "medium", "high"]
+    safety_notes: list[str]
+    analysis_source: Literal["groq", "local", "local_fallback"] = "local"
+    analysis_notice: str | None = None
 
 
 class IncidentCreate(BaseModel):

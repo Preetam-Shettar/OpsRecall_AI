@@ -215,6 +215,9 @@ function App() {
                   <span className="badge">{analysis.confidence || 'medium'}</span>
                   <p>{analysis.summary}</p>
                 </div>
+                {analysis.analysis_notice ? (
+                  <p className="analysis-notice">{analysis.analysis_notice}</p>
+                ) : null}
                 <div className="chips">
                   {analysis.symptoms?.map((symptom) => <span key={symptom} className="chip">{symptom}</span>)}
                 </div>
