@@ -86,12 +86,19 @@ Hindsight serves as the long-term memory layer of the agent, distinct from the S
 - **Storage:** SQLite for application-level metadata and audit history
 - **Testing:** Pytest (11 unit & integration tests)
 - **Containerization:** Docker & Docker Compose
+- **Live Cloud Backend:** [https://opsrecall-backend.onrender.com](https://opsrecall-backend.onrender.com)
 
 ---
 
-## 6. Quick Start & Setup
+## 6. Live Deployment & Quick Start
 
-### Prerequisites
+### Live Cloud Endpoints
+- **Production Backend API:** `https://opsrecall-backend.onrender.com`
+- **Swagger Interactive API Docs:** `https://opsrecall-backend.onrender.com/docs`
+- **Health Check:** `https://opsrecall-backend.onrender.com/api/health`
+- **Dashboard Telemetry Summary:** `https://opsrecall-backend.onrender.com/api/dashboard/summary`
+
+### Prerequisites for Local Running
 - Python 3.10+ installed
 - Node.js 18+ and npm installed (or Docker)
 
