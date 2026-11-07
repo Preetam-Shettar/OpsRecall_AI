@@ -12,7 +12,25 @@ export default function Sidebar({ activeView, setActiveView, counts = {} }) {
     <aside className="sidebar">
       <div className="brand">
         <div className="brand-logo">
-          <span className="brand-icon">⚡</span>
+          <div className="brand-icon">
+            <svg
+              width="20"
+              height="20"
+              viewBox="0 0 24 24"
+              fill="none"
+              xmlns="http://www.w3.org/2000/svg"
+              className="brand-svg"
+            >
+              <path
+                d="M13 2L3.5 13.5H11.5L10 22L20.5 9.5H12.5L13 2Z"
+                fill="#ffffff"
+                stroke="#ffffff"
+                strokeWidth="1.2"
+                strokeLinecap="round"
+                strokeLinejoin="round"
+              />
+            </svg>
+          </div>
           <div>
             <h1 className="brand-name">OpsRecall AI</h1>
             <p className="brand-tagline">Incident Response Agent</p>

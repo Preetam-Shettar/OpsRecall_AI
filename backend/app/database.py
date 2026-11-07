@@ -47,3 +47,15 @@ def init_db():
             )
             """
         )
+        # Migrate any missing columns if memories table was created previously with older schema
+        cursor = conn.execute("PRAGMA table_info(memories)")
+        columns = [row["name"] for row in cursor.fetchall()]
+        for col, col_type in [
+            ("bank_id", "TEXT DEFAULT 'opsrecall-incidents'"),
+            ("incident_id", "TEXT"),
+            ("service", "TEXT"),
+            ("outcome", "TEXT DEFAULT 'resolved'"),
+            ("verified", "INTEGER DEFAULT 1"),
+        ]:
+            if col not in columns:
+                conn.execute(f"ALTER TABLE memories ADD COLUMN {col} {col_type}")

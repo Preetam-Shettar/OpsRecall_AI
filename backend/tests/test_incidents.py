@@ -63,3 +63,14 @@ def test_incident_lifecycle(tmp_path, monkeypatch):
     # Check that related memories were recalled!
     assert len(result_b["related_memories"]) > 0
     assert any("INC-" in mem["incident_id"] for mem in result_b["related_memories"])
+
+    # 6. Verify that an unverified resolution does NOT retain memory
+    unverified_res = IncidentResolution(
+        root_cause="Speculative unconfirmed hypothesis",
+        resolution="Restarted service without verification",
+        outcome="mitigated",
+        verified=False,
+    )
+    unverified_result = save_resolution(result_b["incident_id"], unverified_res)
+    assert unverified_result["memory_retained"] is False
+    assert unverified_result["memory_details"] is None

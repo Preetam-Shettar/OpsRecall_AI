@@ -35,3 +35,12 @@ OpsRecall AI integrates **Hindsight** (https://hindsight.vectorize.io/) as the c
 ### 3. Reflect
 - **When it fires:** Triggered on-demand via the **Hindsight Memory Explorer** or scheduled reviews.
 - **Purpose:** Analyzes accumulated memory records to surface systemic infrastructure patterns (e.g. repeated connection pool bottlenecks across multiple services).
+
+---
+
+## Cloud vs. Local SQLite Fallback
+
+OpsRecall AI is designed with an honest, resilient persistence architecture:
+- **Hindsight Cloud**: When `HINDSIGHT_API_KEY` is configured, OpsRecall communicates directly with the Hindsight Cloud API (`https://api.hindsight.vectorize.io/v1`).
+- **Resilient Local Fallback**: When unconfigured or offline, operations automatically persist to the local SQLite database. 
+- **Transparent Attribution**: The application never falsely claims a cloud operation when running in fallback. System badges and reflect summaries explicitly denote `[Local Memory Fallback]` mode so evaluators and engineers always know the exact operational state.

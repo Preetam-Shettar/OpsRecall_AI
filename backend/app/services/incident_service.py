@@ -172,18 +172,23 @@ class IncidentService:
             f"Timestamp: {now_iso}"
         )
 
-        retain_result = memory_client.retain(
-            content=memory_text,
-            context=f"OpsRecall resolution {incident_id}",
-            incident_id=incident_id,
-            service=row["service"],
-            outcome=outcome,
-        )
+        retain_result = None
+        is_verified = bool(resolution.get("verified", False))
+
+        # Only engineer-verified resolutions are retained into persistent Hindsight memory
+        if is_verified:
+            retain_result = memory_client.retain(
+                content=memory_text,
+                context=f"OpsRecall resolution {incident_id}",
+                incident_id=incident_id,
+                service=row["service"],
+                outcome=outcome,
+            )
 
         return {
             "status": outcome,
             "resolution": resolution,
-            "memory_retained": True,
+            "memory_retained": is_verified,
             "memory_details": retain_result,
         }
 

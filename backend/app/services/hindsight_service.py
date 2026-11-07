@@ -191,7 +191,7 @@ class HindsightMemoryClient:
             summaries.append(f"[{inc}] {content[:180]}")
 
         joined = " | ".join(summaries)
-        return f"Historical incident synthesis across {len(memories)} matching records: {joined}"
+        return f"[Local Memory Fallback] Cross-incident synthesis across {len(memories)} matching records: {joined}"
 
 
 memory_client = HindsightMemoryClient()

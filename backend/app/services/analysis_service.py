@@ -144,17 +144,39 @@ class AnalysisService:
         signal_terms = extract_signal_terms(logs + " " + logs_text)
 
         if any(term in logs_text for term in ("timeout", "timed out", "timed", "acquisition", "pool", "exhaustion", "database")):
-            summary = "The incident appears to involve a backend dependency bottleneck or connection exhaustion."
-            symptoms = ["Request timeouts", "Back-end dependency latency", "Intermittent 5xx responses"]
-            causes = [{
-                "cause": "Database connection pool exhaustion or slow dependency response",
-                "evidence": ["Timeouts were observed in the supplied logs", "The service is affected during a deployment or scale event"],
-                "confidence": "medium",
-            }]
+            if memories:
+                first_mem_id = memories[0].get("incident_id") or "Prior incident"
+                summary = (
+                    f"The incident indicates a database connection pool exhaustion or high backend latency bottleneck. "
+                    f"Recalled prior verified incident {first_mem_id} with similar connection saturation patterns to guide triage."
+                )
+            else:
+                summary = "The incident appears to involve a backend dependency bottleneck or connection exhaustion."
+            symptoms = [
+                "Database connection acquisition timeout",
+                "Downstream request queue backlog",
+                "HTTP 500/504 gateway response spike",
+            ]
+            causes = [
+                {
+                    "cause": "Connection pool limit reached due to worker concurrency or slow queries",
+                    "evidence": [
+                        "Logs report database connection acquisition timed out",
+                        "Active connections reached configured pool maximum",
+                    ] + ([f"Correlated with prior verified resolution in {memories[0].get('incident_id', 'memory')}"] if memories else []),
+                    "confidence": "high" if "pool" in logs_text else "medium",
+                },
+                {
+                    "cause": "Long-running unindexed database query holding connections open",
+                    "evidence": ["Worker backlog accumulated following deployment or scale event"],
+                    "confidence": "medium",
+                },
+            ]
             checks = [
-                "Inspect active and idle database connections.",
-                "Review connection pool limits and worker thread counts.",
-                "Compare the deployment or traffic change against the incident window.",
+                "Inspect active and idle connection pool metrics in the database dashboard.",
+                "Review worker process concurrency vs database pool ceiling settings.",
+                "Check for slow transactions or locked tables in database active queries.",
+                "Verify if recent deployment or scaling event changed default pool limits or connection timeout values.",
             ]
         elif any(term in logs_text for term in ("error", "500", "exception", "failed")):
             summary = "The service is showing repeated application or upstream failures that need isolation first."

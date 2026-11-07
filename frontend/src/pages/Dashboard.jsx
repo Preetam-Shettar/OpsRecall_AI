@@ -6,6 +6,7 @@ export default function Dashboard({
   dashboard,
   recentIncidents = [],
   onNavigateNew,
+  onNavigateHistory,
   onSelectIncident,
 }) {
   const total = dashboard?.total_incidents || 0;
@@ -95,8 +96,19 @@ export default function Dashboard({
       {/* Recent Incidents Section */}
       <section className="dashboard-section">
         <div className="section-header-row">
-          <h3>Recent Incidents</h3>
-          <span className="section-note">Showing most recent telemetry</span>
+          <div className="section-title-group">
+            <h3>Recent Incidents</h3>
+            <span className="section-note">Most recent operational telemetry</span>
+          </div>
+          {onNavigateHistory && total > 0 && (
+            <button
+              type="button"
+              className="view-all-link-btn"
+              onClick={onNavigateHistory}
+            >
+              View All History ({total}) →
+            </button>
+          )}
         </div>
 
         {recentIncidents.length === 0 ? (
@@ -112,7 +124,7 @@ export default function Dashboard({
           </div>
         ) : (
           <div className="incidents-grid">
-            {recentIncidents.map((incident) => (
+            {recentIncidents.slice(0, 4).map((incident) => (
               <IncidentCard
                 key={incident.id}
                 incident={incident}

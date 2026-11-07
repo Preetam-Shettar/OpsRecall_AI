@@ -11,6 +11,8 @@ import './App.css';
 
 export default function App() {
   const [activeView, setActiveView] = useState('dashboard');
+  const [viewHistory, setViewHistory] = useState(['dashboard']);
+  const [theme, setTheme] = useState(() => localStorage.getItem('opsrecall_theme') || 'obsidian');
   const [incidents, setIncidents] = useState([]);
   const [dashboard, setDashboard] = useState({
     total_incidents: 0,
@@ -23,6 +25,12 @@ export default function App() {
   const [submittedIncident, setSubmittedIncident] = useState(null);
   const [backendHealthy, setBackendHealthy] = useState(false);
   const [isSubmitting, setIsSubmitting] = useState(false);
+  const [isRefreshing, setIsRefreshing] = useState(false);
+
+  useEffect(() => {
+    document.documentElement.setAttribute('data-theme', theme);
+    localStorage.setItem('opsrecall_theme', theme);
+  }, [theme]);
 
   useEffect(() => {
     bootstrap();
@@ -42,6 +50,35 @@ export default function App() {
   async function bootstrap() {
     await checkBackendHealth();
     await Promise.all([loadIncidents(), loadSummary()]);
+  }
+
+  async function handleRefresh() {
+    setIsRefreshing(true);
+    try {
+      await checkBackendHealth();
+      await Promise.all([loadIncidents(), loadSummary()]);
+    } finally {
+      setTimeout(() => setIsRefreshing(false), 300);
+    }
+  }
+
+  function navigateTo(nextView) {
+    if (nextView === activeView) return;
+    setViewHistory((prev) => [...prev, nextView]);
+    setActiveView(nextView);
+  }
+
+  function handleBack() {
+    if (viewHistory.length > 1) {
+      const updated = [...viewHistory];
+      updated.pop(); // remove current view
+      const prev = updated[updated.length - 1];
+      setViewHistory(updated);
+      setActiveView(prev);
+    } else {
+      setActiveView('dashboard');
+      setViewHistory(['dashboard']);
+    }
   }
 
   async function loadIncidents() {
@@ -96,18 +133,18 @@ export default function App() {
 
   function handleSelectIncident(incident) {
     setSelectedIncident(incident);
-    setActiveView('details');
+    navigateTo('details');
   }
 
   function handleNavigateNew() {
-    setActiveView('newIncident');
+    navigateTo('newIncident');
   }
 
   return (
     <div className="app-layout">
       <Sidebar
         activeView={activeView}
-        setActiveView={setActiveView}
+        setActiveView={navigateTo}
         counts={{
           total_incidents: dashboard.total_incidents,
           stored_memories: dashboard.stored_memories,
@@ -115,14 +152,24 @@ export default function App() {
       />
 
       <div className="app-main-viewport">
-        <Navbar activeView={activeView} backendHealthy={backendHealthy} />
+        <Navbar
+          activeView={activeView}
+          backendHealthy={backendHealthy}
+          theme={theme}
+          onThemeChange={setTheme}
+          canGoBack={activeView !== 'dashboard'}
+          onBack={handleBack}
+          onRefresh={handleRefresh}
+          isRefreshing={isRefreshing}
+        />
 
         <main className="content-container">
           {activeView === 'dashboard' && (
             <Dashboard
               dashboard={dashboard}
-              recentIncidents={incidents.slice(0, 6)}
+              recentIncidents={incidents.slice(0, 4)}
               onNavigateNew={handleNavigateNew}
+              onNavigateHistory={() => navigateTo('history')}
               onSelectIncident={handleSelectIncident}
             />
           )}
@@ -148,7 +195,7 @@ export default function App() {
             <IncidentDetails
               incident={selectedIncident}
               onSaveResolution={handleSaveResolution}
-              onBack={() => setActiveView('history')}
+              onBack={handleBack}
             />
           )}
 
