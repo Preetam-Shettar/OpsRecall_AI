@@ -1,4 +1,5 @@
-from fastapi import APIRouter, HTTPException
+from typing import Optional
+from fastapi import APIRouter, HTTPException, Query
 
 from app.schemas.incident import IncidentCreate, IncidentFeedback, IncidentResolution
 from app.services.incident_service import incident_service
@@ -19,8 +20,12 @@ def create_incident(payload: IncidentCreate):
 
 
 @router.get("/api/incidents")
-def list_incidents():
-    return incident_service.list_incidents()
+def list_incidents(
+    search: Optional[str] = Query(None, description="Search term in title, description, or service"),
+    service: Optional[str] = Query(None, description="Filter by service"),
+    status: Optional[str] = Query(None, description="Filter by status"),
+):
+    return incident_service.list_incidents(search=search, service=service, status=status)
 
 
 @router.get("/api/incidents/{incident_id}")
@@ -33,12 +38,18 @@ def get_incident(incident_id: str):
 
 @router.post("/api/incidents/{incident_id}/feedback")
 def save_feedback(incident_id: str, payload: IncidentFeedback):
-    return incident_service.save_feedback(incident_id, payload.model_dump())
+    try:
+        return incident_service.save_feedback(incident_id, payload.model_dump())
+    except ValueError as exc:
+        raise HTTPException(status_code=404, detail=str(exc))
 
 
 @router.post("/api/incidents/{incident_id}/resolution")
 def save_resolution(incident_id: str, payload: IncidentResolution):
-    return incident_service.save_resolution(incident_id, payload.model_dump())
+    try:
+        return incident_service.save_resolution(incident_id, payload.model_dump())
+    except ValueError as exc:
+        raise HTTPException(status_code=404, detail=str(exc))
 
 
 @router.get("/api/dashboard/summary")

@@ -1,0 +1,5 @@
+2026-11-07 10:12:01.102 ERROR [orders-api] Database connection acquisition timed out after 30000ms.
+2026-11-07 10:12:01.105 ERROR [orders-api] Request failed: GET /api/v1/orders - ConnectionPoolTimeoutException
+2026-11-07 10:12:02.450 WARN  [database-pool] Active connections reached configured maximum (10/10). Queue depth: 42 waiting threads.
+2026-11-07 10:12:03.110 ERROR [orders-api] Health check degraded: database connectivity latency > 5000ms.
+2026-11-07 10:12:04.220 ERROR [gateway] Upstream HTTP 504 Gateway Timeout from service: orders-api (duration: 30.01s).

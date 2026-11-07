@@ -5,7 +5,7 @@ from typing import Any, Literal
 import httpx
 
 from app.config import GROQ_API_KEY, GROQ_MODEL
-from app.schemas.incident import IncidentAnalysis, RelatedMemoryInsight
+from app.schemas.analysis import IncidentAnalysis, RelatedMemoryInsight
 from app.services.hindsight_service import memory_client
 from app.services.log_parser import extract_signal_terms, sanitize_logs
 
@@ -13,19 +13,26 @@ logger = logging.getLogger(__name__)
 
 
 class AnalysisService:
-    def analyze_incident(self, incident: dict[str, Any], prior_memories: list[dict[str, Any]] | None = None) -> dict[str, Any]:
-        logs = incident.get("sanitized_logs") or incident.get("description") or ""
+    def analyze_incident(
+        self,
+        incident: dict[str, Any],
+        prior_memories: list[dict[str, Any]] | None = None,
+    ) -> dict[str, Any]:
+        logs = incident.get("sanitized_logs") or incident.get("logs") or incident.get("description") or ""
         logs_text = logs.lower()
-        query = " ".join(
-            str(incident.get(key) or "")
-            for key in ("title", "service", "environment", "description")
-        ) + f" {logs}"
+        query = (
+            f"{incident.get('title', '')} {incident.get('service', '')} "
+            f"{incident.get('environment', '')} {incident.get('description', '')} {logs}"
+        )
         memories = prior_memories if prior_memories is not None else memory_client.recall(query)
 
-        if GROQ_API_KEY:
+        # Check module-level GROQ_API_KEY which may be monkeypatched by tests
+        current_api_key = globals().get("GROQ_API_KEY")
+
+        if current_api_key:
             try:
-                return self._analyze_with_groq(incident, logs, memories)
-            except (httpx.HTTPError, ValueError) as error:
+                return self._analyze_with_groq(incident, logs, memories, current_api_key)
+            except (httpx.HTTPError, ValueError, Exception) as error:
                 logger.warning(
                     "Groq analysis failed (%s); using local analysis",
                     type(error).__name__,
@@ -51,13 +58,15 @@ class AnalysisService:
         incident: dict[str, Any],
         logs: str,
         memories: list[dict[str, Any]],
+        api_key: str,
     ) -> dict[str, Any]:
+        current_model = globals().get("GROQ_MODEL") or "openai/gpt-oss-120b"
         safe_memories = [
             {
                 "incident_id": str(item.get("incident_id") or item.get("context") or "Prior incident"),
                 "content": sanitize_logs(str(item.get("content") or ""))[:1000],
             }
-            for item in memories[:3]
+            for item in memories[:4]
         ]
         prompt = {
             "incident": {
@@ -65,16 +74,17 @@ class AnalysisService:
                 "service": incident.get("service", ""),
                 "environment": incident.get("environment", ""),
                 "description": sanitize_logs(str(incident.get("description") or "")),
+                "deployment_context": incident.get("deployment_context") or "",
                 "logs": sanitize_logs(logs),
             },
             "historical_memories": safe_memories,
         }
-        authorization = "{} {}".format("Bearer", GROQ_API_KEY)
+        authorization = f"Bearer {api_key}"
         response = httpx.post(
             "https://api.groq.com/openai/v1/chat/completions",
-            headers={"Authorization": authorization},
+            headers={"Authorization": authorization, "Content-Type": "application/json"},
             json={
-                "model": GROQ_MODEL,
+                "model": current_model,
                 "messages": [
                     {
                         "role": "system",
@@ -131,8 +141,9 @@ class AnalysisService:
         source: Literal["local", "local_fallback"],
         notice: str,
     ) -> dict[str, Any]:
-        signal_terms = extract_signal_terms(logs)
-        if "timeout" in logs_text or "timed out" in logs_text or "database" in logs_text:
+        signal_terms = extract_signal_terms(logs + " " + logs_text)
+
+        if any(term in logs_text for term in ("timeout", "timed out", "timed", "acquisition", "pool", "exhaustion", "database")):
             summary = "The incident appears to involve a backend dependency bottleneck or connection exhaustion."
             symptoms = ["Request timeouts", "Back-end dependency latency", "Intermittent 5xx responses"]
             causes = [{
@@ -145,7 +156,7 @@ class AnalysisService:
                 "Review connection pool limits and worker thread counts.",
                 "Compare the deployment or traffic change against the incident window.",
             ]
-        elif "error" in logs_text or "500" in logs_text:
+        elif any(term in logs_text for term in ("error", "500", "exception", "failed")):
             summary = "The service is showing repeated application or upstream failures that need isolation first."
             symptoms = ["HTTP 500 responses", "Application error logs", "User-facing failures"]
             causes = [{
@@ -199,11 +210,18 @@ class AnalysisService:
     @staticmethod
     def _related_memory_insights(memories: list[dict[str, Any]]) -> list[dict[str, str]]:
         related = []
-        for item in memories[:3]:
+        for item in memories[:4]:
             content = sanitize_logs(str(item.get("content") or "")).strip()
             if content:
+                inc_id = str(item.get("incident_id") or item.get("context") or "Prior incident")
+                lesson = content.replace("\n", " ")
+                if len(lesson) > 280:
+                    lesson = lesson[:277] + "..."
                 related.append({
-                    "incident_id": str(item.get("incident_id") or item.get("context") or "Prior incident"),
-                    "lesson": content[:220],
+                    "incident_id": inc_id,
+                    "lesson": lesson,
                 })
         return related
+
+
+analysis_service = AnalysisService()

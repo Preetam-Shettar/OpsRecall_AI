@@ -7,10 +7,15 @@ from app.routes.health import router as health_router
 from app.routes.incidents import router as incidents_router
 from app.routes.memory import router as memory_router
 
-app = FastAPI(title="OpsRecall AI", version="0.1.0")
+app = FastAPI(
+    title="OpsRecall AI API",
+    description="AI-powered incident response assistant with persistent Hindsight memory",
+    version="0.1.0",
+)
+
 app.add_middleware(
     CORSMiddleware,
-    allow_origins=BACKEND_CORS_ORIGINS,
+    allow_origins=BACKEND_CORS_ORIGINS or ["*"],
     allow_credentials=True,
     allow_methods=["*"],
     allow_headers=["*"],
@@ -28,4 +33,16 @@ def startup_event():
 
 @app.get("/")
 def root():
-    return {"message": "OpsRecall AI backend is running"}
+    return {
+        "service": "OpsRecall AI",
+        "version": "0.1.0",
+        "status": "operational",
+        "endpoints": {
+            "health": "/api/health",
+            "incidents": "/api/incidents",
+            "dashboard": "/api/dashboard/summary",
+            "recall": "/api/memory/recall",
+            "reflect": "/api/memory/reflect",
+            "docs": "/docs",
+        },
+    }

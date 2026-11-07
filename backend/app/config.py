@@ -14,4 +14,5 @@ GROQ_API_KEY = os.getenv("GROQ_API_KEY")
 GROQ_MODEL = os.getenv("GROQ_MODEL", "openai/gpt-oss-120b")
 HINDSIGHT_BASE_URL = os.getenv("HINDSIGHT_BASE_URL")
 HINDSIGHT_API_KEY = os.getenv("HINDSIGHT_API_KEY")
+HINDSIGHT_BANK_ID = os.getenv("HINDSIGHT_BANK_ID", "opsrecall-incidents")
 BACKEND_CORS_ORIGINS = [item.strip() for item in os.getenv("BACKEND_CORS_ORIGINS", "http://localhost:5173").split(",") if item.strip()]

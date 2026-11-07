@@ -36,8 +36,13 @@ def init_db():
             """
             CREATE TABLE IF NOT EXISTS memories (
                 id INTEGER PRIMARY KEY AUTOINCREMENT,
+                bank_id TEXT DEFAULT 'opsrecall-incidents',
+                incident_id TEXT,
+                service TEXT,
                 content TEXT NOT NULL,
                 context TEXT,
+                outcome TEXT DEFAULT 'resolved',
+                verified INTEGER DEFAULT 1,
                 created_at TEXT DEFAULT CURRENT_TIMESTAMP
             )
             """

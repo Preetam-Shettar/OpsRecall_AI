@@ -1,0 +1,4 @@
+2026-11-08 09:30:10.450 ERROR [checkout-api] Timeout waiting for database connection from pool after scaling workers.
+2026-11-08 09:30:11.100 WARN  [database-pool] Connection pool utilization: 100% (pool size: 10, active: 10, idle: 0).
+2026-11-08 09:30:12.330 ERROR [checkout-api] Transaction rollback: could not acquire DB lease within 15000ms.
+2026-11-08 09:30:13.910 ERROR [checkout-api] Failed to complete order reservation checkout_id=8921. HTTP 500 returned to client.
