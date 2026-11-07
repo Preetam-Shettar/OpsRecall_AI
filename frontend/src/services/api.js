@@ -1,7 +1,9 @@
-const API_BASE = 'https://opsrecall-backend.onrender.com/';
+const RAW_BASE = import.meta.env.VITE_API_BASE_URL || 'https://opsrecall-backend.onrender.com';
+const API_BASE = RAW_BASE.replace(/\/+$/, '');
 
 async function request(endpoint, options = {}) {
-  const url = `${API_BASE}${endpoint}`;
+  const normalizedEndpoint = endpoint.startsWith('/') ? endpoint : `/${endpoint}`;
+  const url = `${API_BASE}${normalizedEndpoint}`;
   const response = await fetch(url, {
     headers: {
       'Content-Type': 'application/json',
