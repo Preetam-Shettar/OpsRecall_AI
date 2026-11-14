@@ -12,7 +12,6 @@ import './App.css';
 export default function App() {
   const [activeView, setActiveView] = useState('dashboard');
   const [viewHistory, setViewHistory] = useState(['dashboard']);
-  const [theme, setTheme] = useState(() => localStorage.getItem('opsrecall_theme') || 'signal');
   const [incidents, setIncidents] = useState([]);
   const [dashboard, setDashboard] = useState({
     total_incidents: 0,
@@ -27,11 +26,6 @@ export default function App() {
   const [isSubmitting, setIsSubmitting] = useState(false);
   const [isRefreshing, setIsRefreshing] = useState(false);
   const [isSidebarOpen, setIsSidebarOpen] = useState(false);
-
-  useEffect(() => {
-    document.documentElement.setAttribute('data-theme', theme);
-    localStorage.setItem('opsrecall_theme', theme);
-  }, [theme]);
 
   useEffect(() => {
     bootstrap();
@@ -159,8 +153,6 @@ export default function App() {
         <Navbar
           activeView={activeView}
           backendHealthy={backendHealthy}
-          theme={theme}
-          onThemeChange={setTheme}
           canGoBack={activeView !== 'dashboard'}
           onBack={handleBack}
           onRefresh={handleRefresh}

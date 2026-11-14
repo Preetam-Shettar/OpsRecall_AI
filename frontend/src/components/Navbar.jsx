@@ -3,8 +3,6 @@ import React from 'react';
 export default function Navbar({
   activeView,
   backendHealthy,
-  theme,
-  onThemeChange,
   canGoBack,
   onBack,
   onRefresh,
@@ -18,14 +16,6 @@ export default function Navbar({
     memory: 'Hindsight Memory Bank Explorer',
     details: 'Incident Diagnosis & Resolution',
   };
-
-  const themes = [
-    { id: 'signal', label: 'Signal / Field Notes', icon: '📡' },
-    { id: 'obsidian', label: 'Obsidian Ink', icon: '⚡' },
-    { id: 'emerald', label: 'Emerald Field', icon: '🌿' },
-    { id: 'synth', label: 'Amber Synth', icon: '🔮' },
-    { id: 'slate', label: 'Slate Technical', icon: '🌊' },
-  ];
 
   return (
     <header className="navbar">
@@ -66,23 +56,6 @@ export default function Navbar({
           <span className="refresh-icon">🔄</span>
           <span className="refresh-label">{isRefreshing ? 'Syncing…' : 'Refresh'}</span>
         </button>
-
-        {/* Theme Selector */}
-        <div className="theme-selector-pill">
-          <span className="theme-selector-label">Theme:</span>
-          <select
-            value={theme}
-            onChange={(e) => onThemeChange(e.target.value)}
-            className="theme-select-input"
-            aria-label="Color Theme Selector"
-          >
-            {themes.map((t) => (
-              <option key={t.id} value={t.id}>
-                {t.icon} {t.label}
-              </option>
-            ))}
-          </select>
-        </div>
 
         {/* Hindsight Bank Badge */}
         <div className="memory-badge" title="Active Hindsight Memory Bank: opsrecall-incidents">
