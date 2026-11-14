@@ -57,6 +57,60 @@ export const api = {
       body: JSON.stringify(resolution),
     }),
 
+  listIncidentActions: (incidentId, params = {}) => {
+    const searchParams = new URLSearchParams();
+    if (params.status) searchParams.append('status', params.status);
+    if (params.category) searchParams.append('category', params.category);
+    const queryString = searchParams.toString();
+    return request(`/api/incidents/${incidentId}/actions${queryString ? `?${queryString}` : ''}`);
+  },
+
+  createIncidentAction: (incidentId, actionData) =>
+    request(`/api/incidents/${incidentId}/actions`, {
+      method: 'POST',
+      body: JSON.stringify(actionData),
+    }),
+
+  importRecommendedActions: (incidentId, actor = 'On-call Engineer') =>
+    request(`/api/incidents/${incidentId}/actions/import-recommendations`, {
+      method: 'POST',
+      body: JSON.stringify({ actor }),
+    }),
+
+  updateIncidentAction: (incidentId, actionId, updateData) =>
+    request(`/api/incidents/${incidentId}/actions/${actionId}`, {
+      method: 'PATCH',
+      body: JSON.stringify(updateData),
+    }),
+
+  getIncidentAction: (incidentId, actionId) =>
+    request(`/api/incidents/${incidentId}/actions/${actionId}`),
+
+  getActionPlanSummary: (incidentId) =>
+    request(`/api/incidents/${incidentId}/actions/summary`),
+
+  getIncidentTimeline: (incidentId, limit = 150) =>
+    request(`/api/incidents/${incidentId}/timeline?limit=${limit}`),
+
+  listMemories: (params = {}) => {
+    const searchParams = new URLSearchParams();
+    if (params.search) searchParams.append('search', params.search);
+    if (params.service) searchParams.append('service', params.service);
+    if (params.severity) searchParams.append('severity', params.severity);
+    if (params.environment) searchParams.append('environment', params.environment);
+    if (params.verified !== undefined && params.verified !== null) {
+      searchParams.append('verified', params.verified);
+    }
+    if (params.page) searchParams.append('page', params.page);
+    if (params.pageSize || params.page_size) {
+      searchParams.append('page_size', params.pageSize || params.page_size);
+    }
+    const queryString = searchParams.toString();
+    return request(`/api/memory${queryString ? `?${queryString}` : ''}`);
+  },
+
+  getMemoryDetail: (id) => request(`/api/memory/${id}`),
+
   recallMemory: (query, budget = 'mid') =>
     request('/api/memory/recall', {
       method: 'POST',

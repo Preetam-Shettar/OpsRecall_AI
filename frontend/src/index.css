@@ -1,9 +1,9 @@
 :root {
-  font-family: Inter, 'Segoe UI', sans-serif;
+  font-family: -apple-system, BlinkMacSystemFont, 'Segoe UI', Roboto, Helvetica, Arial, sans-serif;
   line-height: 1.5;
   font-weight: 400;
-  color: #e2e8f0;
-  background: #020817;
+  color: var(--text-main, #17212B);
+  background-color: var(--bg-app, #F1F0EA);
   font-synthesis: none;
   text-rendering: optimizeLegibility;
   -webkit-font-smoothing: antialiased;
@@ -21,7 +21,8 @@ html, body, #root {
 }
 
 body {
-  background: #020817;
+  background-color: var(--bg-app, #F1F0EA);
+  color: var(--text-main, #17212B);
 }
 
 a {
