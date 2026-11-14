@@ -297,6 +297,28 @@ class IncidentService:
         incident_record["analysis"] = analysis
         incident_record["related_memories"] = analysis.get("related_memory_insights", [])
         incident_record["recommendations"] = analysis.get("recommended_checks", [])
+
+        # Step 4: Emit initial timeline events for incident detection and analysis
+        self.record_timeline_event(
+            incident_id=incident_id,
+            event_type="incident_created",
+            description=f"Incident registered for service '{incident_record['service']}' in {incident_record['environment']}. Severity: {severity.upper()}.",
+            actor="OpsRecall AI",
+            actor_type="ai",
+            created_at=now,
+        )
+        summary_snippet = analysis.get("summary") or "Diagnostic analysis generated."
+        if len(summary_snippet) > 140:
+            summary_snippet = summary_snippet[:137] + "..."
+        self.record_timeline_event(
+            incident_id=incident_id,
+            event_type="analysis_completed",
+            description=f"AI diagnostic investigation completed. Summary: {summary_snippet}",
+            actor="OpsRecall AI",
+            actor_type="ai",
+            created_at=now,
+        )
+
         return incident_record
 
     def get_incident(self, incident_id: str) -> dict[str, Any] | None:
@@ -383,6 +405,34 @@ class IncidentService:
                 incident_id=incident_id,
                 service=row["service"],
                 outcome=outcome,
+            )
+
+        # Emit chronological timeline events for resolution and verification
+        eng_name = resolution["engineer"] or "On-call Engineer"
+        self.record_timeline_event(
+            incident_id=incident_id,
+            event_type="resolution_submitted",
+            description=f"Resolution submitted by {eng_name}. Confirmed root cause: {payload['root_cause'][:120]}.",
+            actor=eng_name,
+            actor_type="engineer",
+            created_at=now_iso,
+        )
+        if is_verified:
+            self.record_timeline_event(
+                incident_id=incident_id,
+                event_type="resolution_verified",
+                description="Resolution verified by engineer. Stored in institutional memory bank.",
+                actor=eng_name,
+                actor_type="engineer",
+                created_at=now_iso,
+            )
+            self.record_timeline_event(
+                incident_id=incident_id,
+                event_type="incident_resolved",
+                description=f"Incident closed with outcome: {outcome.upper()}.",
+                actor="OpsRecall AI",
+                actor_type="system",
+                created_at=now_iso,
             )
 
         return {
@@ -472,6 +522,30 @@ class IncidentService:
         # Memory intelligence
         memory_intel = self._extract_memory_intelligence(all_incidents)
 
+        # Action plan and response tracking telemetry
+        with get_connection() as conn:
+            has_act_table = conn.execute(
+                "SELECT name FROM sqlite_master WHERE type='table' AND name='incident_actions'"
+            ).fetchone()
+            if has_act_table:
+                total_acts = conn.execute("SELECT COUNT(*) as c FROM incident_actions").fetchone()["c"]
+                comp_acts = conn.execute("SELECT COUNT(*) as c FROM incident_actions WHERE status = 'completed'").fetchone()["c"]
+                block_acts = conn.execute("SELECT COUNT(*) as c FROM incident_actions WHERE status = 'blocked'").fetchone()["c"]
+                inprog_acts = conn.execute("SELECT COUNT(*) as c FROM incident_actions WHERE status = 'in_progress'").fetchone()["c"]
+                pend_acts = conn.execute("SELECT COUNT(*) as c FROM incident_actions WHERE status = 'pending'").fetchone()["c"]
+            else:
+                total_acts = comp_acts = block_acts = inprog_acts = pend_acts = 0
+
+        actions_summary = {
+            "total_actions": total_acts,
+            "completed_actions": comp_acts,
+            "blocked_actions": block_acts,
+            "in_progress_actions": inprog_acts,
+            "pending_actions": pend_acts,
+            "completion_rate": round((comp_acts / total_acts * 100), 1) if total_acts > 0 else 0,
+            "blocked_rate": round((block_acts / total_acts * 100), 1) if total_acts > 0 else 0,
+        }
+
         latest = all_incidents[0] if all_incidents else None
         recent = all_incidents[:5]
 
@@ -490,7 +564,9 @@ class IncidentService:
                 "frequently_occurring_types": incident_types,
                 "avg_resolution_time": avg_res_time,
                 "recurring_patterns": recurring_patterns,
+                "actions_summary": actions_summary,
             },
+            "actions_summary": actions_summary,
             "memory_intelligence": memory_intel,
             "latest_incident": {"id": latest["id"], "title": latest["title"]} if latest else None,
             "recent_incidents": recent,
@@ -881,6 +957,403 @@ class IncidentService:
             "symptoms": row["inc_desc"] or fallback.get("symptoms"),
             "related_incident_ids": related_ids,
             "recalled_in_incidents": recalled_in,
+        }
+
+    # =========================================================================
+    # Part 4: Guided Incident Response, Action Plan & Timeline Tracking
+    # =========================================================================
+
+    def _generate_action_id(self, incident_id: str) -> str:
+        unique_suffix = uuid.uuid4().hex[:6].upper()
+        inc_tag = incident_id.replace("INC-", "").split("-")[-1] if "INC-" in incident_id else incident_id[:6]
+        return f"ACT-{inc_tag}-{unique_suffix}"
+
+    def record_timeline_event(
+        self,
+        incident_id: str,
+        event_type: str,
+        description: str,
+        actor: str = "OpsRecall AI",
+        actor_type: str = "ai",
+        related_action_id: str | None = None,
+        created_at: str | None = None,
+    ) -> dict[str, Any]:
+        now_iso = created_at or datetime.now(timezone.utc).strftime("%Y-%m-%dT%H:%M:%SZ")
+        with get_connection() as conn:
+            cursor = conn.execute(
+                """
+                INSERT INTO incident_timeline (
+                    incident_id, event_type, description, actor, actor_type, related_action_id, created_at
+                ) VALUES (?, ?, ?, ?, ?, ?, ?)
+                """,
+                (incident_id, event_type, sanitize_logs(description), actor, actor_type, related_action_id, now_iso),
+            )
+            event_id = cursor.lastrowid
+        return {
+            "id": event_id,
+            "incident_id": incident_id,
+            "event_type": event_type,
+            "description": description,
+            "actor": actor,
+            "actor_type": actor_type,
+            "related_action_id": related_action_id,
+            "created_at": now_iso,
+        }
+
+    def create_action(self, incident_id: str, payload: dict[str, Any]) -> dict[str, Any]:
+        incident = self.get_incident(incident_id)
+        if not incident:
+            raise ValueError(f"Incident '{incident_id}' not found")
+
+        action_id = self._generate_action_id(incident_id)
+        now_iso = datetime.now(timezone.utc).strftime("%Y-%m-%dT%H:%M:%SZ")
+        title = payload.get("title", "").strip()
+        if not title:
+            raise ValueError("Action title cannot be empty")
+
+        category = payload.get("category", "read_only")
+        if category not in ("read_only", "active_validation", "mitigation"):
+            category = "read_only"
+
+        priority = payload.get("priority", "medium")
+        if priority not in ("critical", "high", "medium", "low"):
+            priority = "medium"
+
+        assigned_engineer = payload.get("assigned_engineer")
+        command_hint = sanitize_logs(payload.get("command_hint") or "") if payload.get("command_hint") else None
+        description = sanitize_logs(payload.get("description") or "")
+        actor = payload.get("actor") or assigned_engineer or "On-call Engineer"
+
+        with get_connection() as conn:
+            conn.execute(
+                """
+                INSERT INTO incident_actions (
+                    id, incident_id, title, description, category, priority, status,
+                    assigned_engineer, command_hint, completion_notes, blocked_reason,
+                    created_at, updated_at
+                ) VALUES (?, ?, ?, ?, ?, ?, 'pending', ?, ?, NULL, NULL, ?, ?)
+                """,
+                (
+                    action_id,
+                    incident_id,
+                    title,
+                    description,
+                    category,
+                    priority,
+                    assigned_engineer,
+                    command_hint,
+                    now_iso,
+                    now_iso,
+                ),
+            )
+
+        cat_label = category.replace("_", " ").upper()
+        self.record_timeline_event(
+            incident_id=incident_id,
+            event_type="action_created",
+            description=f"Action '{title}' added to response plan [{cat_label}].",
+            actor=actor,
+            actor_type="engineer" if actor != "OpsRecall AI" else "ai",
+            related_action_id=action_id,
+            created_at=now_iso,
+        )
+
+        return self.get_action(incident_id, action_id)
+
+    def list_actions(
+        self,
+        incident_id: str,
+        status: str | None = None,
+        category: str | None = None,
+    ) -> list[dict[str, Any]]:
+        incident = self.get_incident(incident_id)
+        if not incident:
+            raise ValueError(f"Incident '{incident_id}' not found")
+
+        query = "SELECT * FROM incident_actions WHERE incident_id = ?"
+        params = [incident_id]
+        if isinstance(status, str) and status:
+            query += " AND status = ?"
+            params.append(status)
+        if isinstance(category, str) and category:
+            query += " AND category = ?"
+            params.append(category)
+
+        query += " ORDER BY created_at ASC"
+
+        with get_connection() as conn:
+            rows = conn.execute(query, params).fetchall()
+            return [dict(row) for row in rows]
+
+    def get_action(self, incident_id: str, action_id: str) -> dict[str, Any]:
+        with get_connection() as conn:
+            row = conn.execute(
+                "SELECT * FROM incident_actions WHERE incident_id = ? AND id = ?",
+                (incident_id, action_id),
+            ).fetchone()
+            if not row:
+                raise ValueError(f"Action '{action_id}' not found for incident '{incident_id}'")
+            return dict(row)
+
+    def update_action(self, incident_id: str, action_id: str, payload: dict[str, Any]) -> dict[str, Any]:
+        existing = self.get_action(incident_id, action_id)
+        now_iso = datetime.now(timezone.utc).strftime("%Y-%m-%dT%H:%M:%SZ")
+
+        new_status = payload.get("status")
+        if new_status and new_status not in ("pending", "in_progress", "completed", "blocked"):
+            raise ValueError(f"Invalid action status '{new_status}'. Allowed: pending, in_progress, completed, blocked")
+
+        assigned_engineer = payload.get("assigned_engineer") if "assigned_engineer" in payload else existing["assigned_engineer"]
+        priority = payload.get("priority") if "priority" in payload else existing["priority"]
+        if priority and priority not in ("critical", "high", "medium", "low"):
+            priority = existing["priority"]
+
+        completion_notes = (
+            sanitize_logs(payload.get("completion_notes") or "")
+            if "completion_notes" in payload and payload.get("completion_notes")
+            else existing["completion_notes"]
+        )
+        blocked_reason = (
+            sanitize_logs(payload.get("blocked_reason") or "")
+            if "blocked_reason" in payload and payload.get("blocked_reason")
+            else existing["blocked_reason"]
+        )
+        actor = payload.get("actor") or assigned_engineer or existing["assigned_engineer"] or "On-call Engineer"
+
+        target_status = new_status or existing["status"]
+
+        with get_connection() as conn:
+            conn.execute(
+                """
+                UPDATE incident_actions
+                SET status = ?, assigned_engineer = ?, priority = ?, completion_notes = ?, blocked_reason = ?, updated_at = ?
+                WHERE incident_id = ? AND id = ?
+                """,
+                (
+                    target_status,
+                    assigned_engineer,
+                    priority,
+                    completion_notes,
+                    blocked_reason,
+                    now_iso,
+                    incident_id,
+                    action_id,
+                ),
+            )
+
+        # Emit targeted timeline events
+        if new_status and new_status != existing["status"]:
+            if new_status == "in_progress":
+                self.record_timeline_event(
+                    incident_id=incident_id,
+                    event_type="action_started",
+                    description=f"Investigation started on action '{existing['title']}'.",
+                    actor=actor,
+                    actor_type="engineer",
+                    related_action_id=action_id,
+                    created_at=now_iso,
+                )
+            elif new_status == "completed":
+                finding_snippet = f" Findings: {completion_notes}" if completion_notes else ""
+                self.record_timeline_event(
+                    incident_id=incident_id,
+                    event_type="action_completed",
+                    description=f"Action '{existing['title']}' completed successfully.{finding_snippet}",
+                    actor=actor,
+                    actor_type="engineer",
+                    related_action_id=action_id,
+                    created_at=now_iso,
+                )
+            elif new_status == "blocked":
+                reason_snippet = f" Reason: {blocked_reason}" if blocked_reason else ""
+                self.record_timeline_event(
+                    incident_id=incident_id,
+                    event_type="action_blocked",
+                    description=f"Action '{existing['title']}' marked as blocked.{reason_snippet}",
+                    actor=actor,
+                    actor_type="engineer",
+                    related_action_id=action_id,
+                    created_at=now_iso,
+                )
+            elif new_status == "pending":
+                self.record_timeline_event(
+                    incident_id=incident_id,
+                    event_type="action_reset",
+                    description=f"Action '{existing['title']}' reset back to pending queue.",
+                    actor=actor,
+                    actor_type="engineer",
+                    related_action_id=action_id,
+                    created_at=now_iso,
+                )
+
+        if "assigned_engineer" in payload and payload["assigned_engineer"] != existing["assigned_engineer"]:
+            new_assignee = payload["assigned_engineer"] or "unassigned"
+            self.record_timeline_event(
+                incident_id=incident_id,
+                event_type="engineer_assigned",
+                description=f"Assigned action '{existing['title']}' to {new_assignee}.",
+                actor=actor,
+                actor_type="engineer",
+                related_action_id=action_id,
+                created_at=now_iso,
+            )
+
+        return self.get_action(incident_id, action_id)
+
+    def import_recommendations_to_actions(
+        self,
+        incident_id: str,
+        actor: str = "On-call Engineer",
+    ) -> list[dict[str, Any]]:
+        incident = self.get_incident(incident_id)
+        if not incident:
+            raise ValueError(f"Incident '{incident_id}' not found")
+
+        analysis = incident.get("analysis") or {}
+        structured_checks = analysis.get("structured_checks", [])
+        recommended_checks = analysis.get("recommended_checks", [])
+
+        existing_actions = self.list_actions(incident_id)
+        existing_titles = {a["title"].strip().lower() for a in existing_actions}
+
+        created = []
+        if structured_checks:
+            for chk in structured_checks:
+                if isinstance(chk, dict):
+                    title = chk.get("check", "").strip()
+                    if title and title.lower() not in existing_titles:
+                        ctype = chk.get("check_type", "read_only")
+                        cmd = chk.get("command_hint")
+                        priority = "high" if ctype == "mitigation" else "medium"
+                        action = self.create_action(
+                            incident_id,
+                            {
+                                "title": title,
+                                "description": f"Imported from explainable AI diagnostic check ({ctype.replace('_', ' ')}).",
+                                "category": ctype,
+                                "priority": priority,
+                                "command_hint": cmd,
+                                "actor": actor,
+                            },
+                        )
+                        created.append(action)
+                        existing_titles.add(title.lower())
+        elif recommended_checks:
+            for text in recommended_checks:
+                if isinstance(text, str):
+                    title = text.strip()
+                    if title and title.lower() not in existing_titles:
+                        t_lower = title.lower()
+                        if any(w in t_lower for w in ["mitigat", "restart", "rollback", "scale", "kill", "flush", "evict"]):
+                            ctype = "mitigation"
+                            priority = "high"
+                        elif any(w in t_lower for w in ["curl", "ping", "test", "probe", "query", "load", "active", "benchmark"]):
+                            ctype = "active_validation"
+                            priority = "medium"
+                        else:
+                            ctype = "read_only"
+                            priority = "medium"
+
+                        action = self.create_action(
+                            incident_id,
+                            {
+                                "title": title,
+                                "description": "Imported from recommended diagnostic checks.",
+                                "category": ctype,
+                                "priority": priority,
+                                "command_hint": None,
+                                "actor": actor,
+                            },
+                        )
+                        created.append(action)
+                        existing_titles.add(title.lower())
+
+        if created:
+            self.record_timeline_event(
+                incident_id=incident_id,
+                event_type="actions_imported",
+                description=f"Imported {len(created)} diagnostic checks from AI investigation into active response plan.",
+                actor=actor,
+                actor_type="engineer",
+            )
+
+        return created
+
+    def get_timeline(self, incident_id: str, limit: int = 150) -> list[dict[str, Any]]:
+        incident = self.get_incident(incident_id)
+        if not incident:
+            raise ValueError(f"Incident '{incident_id}' not found")
+
+        limit_val = limit if isinstance(limit, int) else 150
+
+        with get_connection() as conn:
+            rows = conn.execute(
+                """
+                SELECT * FROM incident_timeline
+                WHERE incident_id = ?
+                ORDER BY created_at ASC, id ASC
+                LIMIT ?
+                """,
+                (incident_id, limit_val),
+            ).fetchall()
+            events = [dict(r) for r in rows]
+
+        if not events:
+            now_iso = incident["created_at"]
+            e1 = self.record_timeline_event(
+                incident_id=incident_id,
+                event_type="incident_created",
+                description=f"Incident registered for service '{incident['service']}' in {incident['environment']}. Severity: {incident.get('severity', 'medium').upper()}.",
+                actor="OpsRecall AI",
+                actor_type="ai",
+                created_at=now_iso,
+            )
+            events.append(e1)
+            if incident.get("analysis"):
+                summary_snippet = incident["analysis"].get("summary") or "Diagnostic analysis generated."
+                if len(summary_snippet) > 140:
+                    summary_snippet = summary_snippet[:137] + "..."
+                e2 = self.record_timeline_event(
+                    incident_id=incident_id,
+                    event_type="analysis_completed",
+                    description=f"AI diagnostic investigation completed. Summary: {summary_snippet}",
+                    actor="OpsRecall AI",
+                    actor_type="ai",
+                    created_at=now_iso,
+                )
+                events.append(e2)
+            if incident.get("resolution"):
+                res = incident["resolution"]
+                e3 = self.record_timeline_event(
+                    incident_id=incident_id,
+                    event_type="resolution_submitted",
+                    description=f"Resolution submitted by '{res.get('engineer', 'Engineer')}'. Outcome: {res.get('outcome', 'resolved').upper()}.",
+                    actor=res.get("engineer") or "On-call Engineer",
+                    actor_type="engineer",
+                    created_at=res.get("resolved_at") or incident["updated_at"],
+                )
+                events.append(e3)
+
+        return events
+
+    def get_action_plan_summary(self, incident_id: str) -> dict[str, Any]:
+        actions = self.list_actions(incident_id)
+        total = len(actions)
+        completed = sum(1 for a in actions if a["status"] == "completed")
+        in_progress = sum(1 for a in actions if a["status"] == "in_progress")
+        pending = sum(1 for a in actions if a["status"] == "pending")
+        blocked = sum(1 for a in actions if a["status"] == "blocked")
+        pct = round((completed / total * 100)) if total > 0 else 0
+
+        return {
+            "incident_id": incident_id,
+            "total_actions": total,
+            "completed_actions": completed,
+            "in_progress_actions": in_progress,
+            "pending_actions": pending,
+            "blocked_actions": blocked,
+            "progress_pct": pct,
+            "actions": actions,
         }
 
 

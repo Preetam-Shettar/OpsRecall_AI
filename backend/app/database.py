@@ -48,6 +48,42 @@ def init_db():
             )
             """
         )
+        conn.execute(
+            """
+            CREATE TABLE IF NOT EXISTS incident_actions (
+                id TEXT PRIMARY KEY,
+                incident_id TEXT NOT NULL,
+                title TEXT NOT NULL,
+                description TEXT DEFAULT '',
+                category TEXT DEFAULT 'read_only',
+                priority TEXT DEFAULT 'medium',
+                status TEXT DEFAULT 'pending',
+                assigned_engineer TEXT,
+                command_hint TEXT,
+                completion_notes TEXT,
+                blocked_reason TEXT,
+                created_at TEXT NOT NULL,
+                updated_at TEXT NOT NULL
+            )
+            """
+        )
+        conn.execute(
+            """
+            CREATE TABLE IF NOT EXISTS incident_timeline (
+                id INTEGER PRIMARY KEY AUTOINCREMENT,
+                incident_id TEXT NOT NULL,
+                event_type TEXT NOT NULL,
+                description TEXT NOT NULL,
+                actor TEXT DEFAULT 'OpsRecall AI',
+                actor_type TEXT DEFAULT 'ai',
+                related_action_id TEXT,
+                created_at TEXT NOT NULL
+            )
+            """
+        )
+        conn.execute("CREATE INDEX IF NOT EXISTS idx_actions_incident ON incident_actions(incident_id)")
+        conn.execute("CREATE INDEX IF NOT EXISTS idx_timeline_incident ON incident_timeline(incident_id)")
+
         # Migrate any missing columns if incidents table was created previously with older schema
         cursor = conn.execute("PRAGMA table_info(incidents)")
         inc_columns = [row["name"] for row in cursor.fetchall()]

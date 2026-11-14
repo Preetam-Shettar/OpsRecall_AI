@@ -1,11 +1,11 @@
 import React, { useState } from 'react';
 
-export default function ResolutionForm({ incident, onSaveResolution }) {
+export default function ResolutionForm({ incident, onSaveResolution, initialResolutionNotes }) {
   const [rootCause, setRootCause] = useState(
     incident?.resolution?.root_cause || ''
   );
   const [resolutionSteps, setResolutionSteps] = useState(
-    incident?.resolution?.resolution || ''
+    incident?.resolution?.resolution || initialResolutionNotes || ''
   );
   const [outcome, setOutcome] = useState(incident?.resolution?.outcome || 'resolved');
   const [engineer, setEngineer] = useState(incident?.resolution?.engineer || 'Site Reliability Engineer');
@@ -13,6 +13,12 @@ export default function ResolutionForm({ incident, onSaveResolution }) {
   const [saving, setSaving] = useState(false);
   const [savedSuccess, setSavedSuccess] = useState(false);
   const [error, setError] = useState('');
+
+  React.useEffect(() => {
+    if (initialResolutionNotes && !resolutionSteps) {
+      setResolutionSteps(initialResolutionNotes);
+    }
+  }, [initialResolutionNotes]);
 
   // Pre-fill helper for demo scenario
   function fillDemoFix() {

@@ -41,3 +41,33 @@ class IncidentResolutionModel:
     verified_by_user: bool
     created_at: str
     engineer: str | None = None
+
+
+@dataclass
+class IncidentActionModel:
+    id: str
+    incident_id: str
+    title: str
+    description: str
+    category: str
+    priority: str
+    status: str
+    created_at: str
+    updated_at: str
+    assigned_engineer: str | None = None
+    command_hint: str | None = None
+    completion_notes: str | None = None
+    blocked_reason: str | None = None
+
+
+@dataclass
+class IncidentTimelineEventModel:
+    id: int
+    incident_id: str
+    event_type: str
+    description: str
+    actor: str
+    actor_type: str
+    created_at: str
+    related_action_id: str | None = None
+
