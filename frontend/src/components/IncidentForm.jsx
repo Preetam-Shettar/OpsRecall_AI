@@ -4,6 +4,7 @@ const SCENARIO_A = {
   title: 'Orders API returns HTTP 500 after deployment',
   service: 'orders-api',
   environment: 'staging',
+  severity: 'medium',
   description: 'Requests began failing after the latest deployment release. Latency spiked sharply.',
   deployment_context: 'Release 1.4.2 (scaled worker threads)',
   logs: `2026-11-07 10:12:01 ERROR orders-api
@@ -18,6 +19,7 @@ const SCENARIO_B = {
   title: 'Checkout API timing out after scaling workers',
   service: 'checkout-api',
   environment: 'production',
+  severity: 'high',
   description: 'Worker concurrency was increased and checkout orders began timing out on DB connection acquisition.',
   deployment_context: 'Scaled worker pool from 4 to 16 workers',
   logs: `2026-11-08 09:30:10 ERROR checkout-api
@@ -33,6 +35,7 @@ export default function IncidentForm({ onSubmit, isSubmitting }) {
     title: '',
     service: '',
     environment: 'staging',
+    severity: 'medium',
     description: '',
     deployment_context: '',
     logs: '',
@@ -89,7 +92,7 @@ export default function IncidentForm({ onSubmit, isSubmitting }) {
           />
         </div>
 
-        <div className="form-row-2">
+        <div className="form-row-3">
           <div className="form-group">
             <label htmlFor="service">Affected Service / Component *</label>
             <input
@@ -112,6 +115,20 @@ export default function IncidentForm({ onSubmit, isSubmitting }) {
               <option value="production">Production</option>
               <option value="staging">Staging</option>
               <option value="development">Development</option>
+            </select>
+          </div>
+
+          <div className="form-group">
+            <label htmlFor="severity">Severity</label>
+            <select
+              id="severity"
+              value={formData.severity || 'medium'}
+              onChange={(e) => setFormData({ ...formData, severity: e.target.value })}
+            >
+              <option value="critical">Critical</option>
+              <option value="high">High</option>
+              <option value="medium">Medium</option>
+              <option value="low">Low</option>
             </select>
           </div>
         </div>

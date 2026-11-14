@@ -172,10 +172,13 @@ export default function App() {
           {activeView === 'dashboard' && (
             <Dashboard
               dashboard={dashboard}
-              recentIncidents={incidents.slice(0, 4)}
+              recentIncidents={incidents.slice(0, 6)}
               onNavigateNew={handleNavigateNew}
               onNavigateHistory={() => navigateTo('history')}
+              onNavigateMemory={() => navigateTo('memory')}
               onSelectIncident={handleSelectIncident}
+              onRefresh={handleRefresh}
+              isRefreshing={isRefreshing}
             />
           )}
 
