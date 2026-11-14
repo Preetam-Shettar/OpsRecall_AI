@@ -73,3 +73,57 @@ def extract_signal_terms(raw_text: str) -> list[str]:
             if candidate in tokens or ("timeout" in candidate and ("timeout" in tokens or "timed" in tokens)):
                 matched.append(candidate)
     return matched
+
+
+def extract_log_evidence_snippets(sanitized_logs: str, max_snippets: int = 5) -> list[dict[str, object]]:
+    """
+    Extract verbatim lines from sanitized logs containing high-signal diagnostic evidence.
+    Preserves original line contents and indentation. Line numbers are accurate 1-based indices.
+    Defense-in-depth: enforces log sanitization so raw secrets are never exposed in excerpts.
+    """
+    if not sanitized_logs or not isinstance(sanitized_logs, str):
+        return []
+
+    # Defense-in-depth: ensure logs are sanitized before extracting
+    clean_logs = sanitize_logs(sanitized_logs)
+    if not clean_logs.strip():
+        return []
+
+    lines = clean_logs.splitlines()
+    if not lines:
+        return []
+
+    # Prioritized keywords to identify high-diagnostic log evidence
+    signal_keywords = [
+        "exhaustion", "exhausted", "acquisition", "pool", "deadlock",
+        "oom", "out of memory", "timeout", "timed out", "500", "502", "503", "504",
+        "limit reached", "maximum connection", "error", "fatal", "exception",
+        "failed", "refused", "backlog", "latency", "connection", "leak"
+    ]
+
+    snippets: list[dict[str, object]] = []
+    seen_texts: set[str] = set()
+
+    for idx, raw_line in enumerate(lines, start=1):
+        line_clean = raw_line.strip()
+        if not line_clean:
+            continue
+
+        lower_line = line_clean.lower()
+        matched_signal = None
+        for kw in signal_keywords:
+            if kw in lower_line:
+                matched_signal = kw.replace(" ", "_")
+                break
+
+        if matched_signal and line_clean not in seen_texts:
+            seen_texts.add(line_clean)
+            snippets.append({
+                "log_text": raw_line,  # Preserves verbatim line
+                "signal_matched": matched_signal,
+                "line_number": idx,
+            })
+            if len(snippets) >= max_snippets:
+                break
+
+    return snippets

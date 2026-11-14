@@ -20,10 +20,11 @@ export default function Navbar({
   };
 
   const themes = [
-    { id: 'obsidian', label: 'Obsidian Cyan', icon: '⚡' },
-    { id: 'emerald', label: 'Emerald Ops', icon: '🌿' },
-    { id: 'synth', label: 'Midnight Synth', icon: '🔮' },
-    { id: 'slate', label: 'Slate Navy', icon: '🌊' },
+    { id: 'signal', label: 'Signal / Field Notes', icon: '📡' },
+    { id: 'obsidian', label: 'Obsidian Ink', icon: '⚡' },
+    { id: 'emerald', label: 'Emerald Field', icon: '🌿' },
+    { id: 'synth', label: 'Amber Synth', icon: '🔮' },
+    { id: 'slate', label: 'Slate Technical', icon: '🌊' },
   ];
 
   return (

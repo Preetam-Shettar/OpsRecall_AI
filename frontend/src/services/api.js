@@ -57,6 +57,25 @@ export const api = {
       body: JSON.stringify(resolution),
     }),
 
+  listMemories: (params = {}) => {
+    const searchParams = new URLSearchParams();
+    if (params.search) searchParams.append('search', params.search);
+    if (params.service) searchParams.append('service', params.service);
+    if (params.severity) searchParams.append('severity', params.severity);
+    if (params.environment) searchParams.append('environment', params.environment);
+    if (params.verified !== undefined && params.verified !== null) {
+      searchParams.append('verified', params.verified);
+    }
+    if (params.page) searchParams.append('page', params.page);
+    if (params.pageSize || params.page_size) {
+      searchParams.append('page_size', params.pageSize || params.page_size);
+    }
+    const queryString = searchParams.toString();
+    return request(`/api/memory${queryString ? `?${queryString}` : ''}`);
+  },
+
+  getMemoryDetail: (id) => request(`/api/memory/${id}`),
+
   recallMemory: (query, budget = 'mid') =>
     request('/api/memory/recall', {
       method: 'POST',
