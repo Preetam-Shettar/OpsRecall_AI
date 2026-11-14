@@ -14,6 +14,7 @@ class IncidentCreate(BaseModel):
     title: str = Field(..., min_length=3, max_length=200)
     service: str = Field(..., min_length=2, max_length=100)
     environment: str = Field(default="staging", min_length=2, max_length=50)
+    severity: str | None = Field(default=None, max_length=50)
     description: str = Field(..., min_length=5, max_length=2000)
     logs: str = Field(default="", max_length=50000)
     deployment_context: str | None = Field(default=None, max_length=500)
