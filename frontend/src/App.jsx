@@ -12,7 +12,7 @@ import './App.css';
 export default function App() {
   const [activeView, setActiveView] = useState('dashboard');
   const [viewHistory, setViewHistory] = useState(['dashboard']);
-  const [theme, setTheme] = useState(() => localStorage.getItem('opsrecall_theme') || 'obsidian');
+  const [theme, setTheme] = useState(() => localStorage.getItem('opsrecall_theme') || 'signal');
   const [incidents, setIncidents] = useState([]);
   const [dashboard, setDashboard] = useState({
     total_incidents: 0,

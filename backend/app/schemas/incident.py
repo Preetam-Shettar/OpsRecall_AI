@@ -39,6 +39,43 @@ class IncidentMemoryRequest(BaseModel):
     budget: str = Field(default="mid", max_length=20)
 
 
+class MemoryItem(BaseModel):
+    id: int
+    incident_id: str
+    title: str
+    service: str
+    environment: str
+    severity: str
+    root_cause: str
+    resolution: str
+    outcome: str
+    verified: bool
+    engineer: str | None = None
+    created_at: str
+    storage_provider: str
+    bank_id: str
+    recall_count: int = 0
+    has_parent_incident: bool = True
+
+
+class MemoryDetail(MemoryItem):
+    content: str
+    context: str | None = None
+    evidence_logs: str | None = None
+    symptoms: str | None = None
+    related_incident_ids: list[str] = Field(default_factory=list)
+    recalled_in_incidents: list[dict[str, Any]] = Field(default_factory=list)
+
+
+class MemoryListResponse(BaseModel):
+    items: list[MemoryItem]
+    total: int
+    page: int
+    page_size: int
+    total_pages: int
+    verified_only: bool
+
+
 class IncidentResponse(BaseModel):
     incident_id: str
     status: str
