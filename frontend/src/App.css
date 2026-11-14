@@ -1472,6 +1472,42 @@ input:focus, select:focus, textarea:focus {
   font-weight: 600;
 }
 
+.inspect-history-btn {
+  background-color: var(--primary-subtle);
+  border: 1px solid var(--border-accent);
+  color: var(--primary);
+  font-size: 0.725rem;
+  font-weight: 600;
+  padding: 0.2rem 0.55rem;
+  border-radius: 4px;
+  cursor: pointer;
+  margin-left: 0.5rem;
+  transition: all 0.15s ease;
+}
+
+.inspect-history-btn:hover {
+  background-color: var(--primary);
+  color: #ffffff;
+  border-color: var(--primary);
+}
+
+.historical-provenance-notice {
+  background-color: rgba(82, 118, 184, 0.1);
+  border-bottom: 1px solid rgba(82, 118, 184, 0.25);
+  padding: 0.65rem 1.5rem;
+  display: flex;
+  align-items: center;
+  gap: 0.6rem;
+  font-size: 0.8rem;
+  color: var(--text-main);
+}
+
+.drawer-loading-box {
+  text-align: center;
+  padding: 3rem 1rem;
+  color: var(--text-muted);
+}
+
 .memory-lesson-text {
   font-size: 0.85rem;
   color: var(--text-main);
@@ -1509,6 +1545,32 @@ input:focus, select:focus, textarea:focus {
   box-shadow: var(--shadow-sm);
 }
 
+.human-verification-advisory-banner {
+  background-color: rgba(229, 138, 54, 0.1);
+  border: 1px solid rgba(229, 138, 54, 0.35);
+  border-left: 4px solid var(--status-high);
+  border-radius: 6px;
+  padding: 0.75rem 1rem;
+  margin-bottom: 1.25rem;
+  display: flex;
+  align-items: center;
+  gap: 0.65rem;
+  font-size: 0.825rem;
+  color: var(--text-main);
+  line-height: 1.4;
+}
+
+.hypothesis-indicator-pill {
+  font-size: 0.7rem;
+  font-weight: 600;
+  color: var(--status-medium);
+  background-color: rgba(184, 154, 60, 0.12);
+  border: 1px solid rgba(184, 154, 60, 0.3);
+  padding: 0.15rem 0.5rem;
+  border-radius: 4px;
+  margin-left: auto;
+}
+
 .analysis-header-card {
   margin-bottom: 1.5rem;
   padding-bottom: 1.25rem;
@@ -1518,6 +1580,7 @@ input:focus, select:focus, textarea:focus {
 .analysis-badges-row {
   display: flex;
   align-items: center;
+  flex-wrap: wrap;
   gap: 0.65rem;
   margin-bottom: 0.85rem;
 }
@@ -1571,6 +1634,402 @@ input:focus, select:focus, textarea:focus {
   letter-spacing: 0.5px;
   color: var(--text-dim);
   margin-bottom: 0.75rem;
+}
+
+/* Leading Cause Hero Card */
+.leading-cause-card {
+  background-color: var(--bg-panel-subtle);
+  border: 1px solid var(--border-color);
+  border-left: 4px solid var(--primary);
+  border-radius: 8px;
+  padding: 1.25rem;
+  margin-bottom: 1.25rem;
+}
+
+.leading-cause-top {
+  display: flex;
+  justify-content: space-between;
+  align-items: center;
+  margin-bottom: 0.5rem;
+}
+
+.leading-cause-badge {
+  font-size: 0.75rem;
+  font-weight: 700;
+  text-transform: uppercase;
+  letter-spacing: 0.04em;
+  color: var(--primary);
+}
+
+.leading-cause-title {
+  font-size: 1.15rem;
+  font-weight: 700;
+  color: var(--text-main);
+  line-height: 1.35;
+  margin: 0 0 1rem 0;
+}
+
+.supporting-excerpts-wrapper {
+  background-color: var(--bg-panel);
+  border: 1px solid var(--border-color);
+  border-radius: 6px;
+  overflow: hidden;
+}
+
+.excerpts-header {
+  display: flex;
+  justify-content: space-between;
+  align-items: center;
+  padding: 0.5rem 0.85rem;
+  background-color: var(--bg-panel-muted);
+  border-bottom: 1px solid var(--border-color);
+  font-size: 0.75rem;
+}
+
+.excerpts-label {
+  font-weight: 700;
+  color: var(--text-main);
+}
+
+.excerpts-sub {
+  color: var(--text-dim);
+}
+
+.excerpts-list {
+  display: flex;
+  flex-direction: column;
+}
+
+.log-excerpt-row {
+  display: flex;
+  align-items: baseline;
+  gap: 0.75rem;
+  padding: 0.5rem 0.85rem;
+  border-bottom: 1px solid var(--border-color);
+  background-color: var(--ink-950);
+  font-family: var(--font-mono);
+  font-size: 0.775rem;
+}
+
+.log-excerpt-row:last-child {
+  border-bottom: none;
+}
+
+.excerpt-meta-col {
+  display: flex;
+  align-items: center;
+  gap: 0.4rem;
+  flex-shrink: 0;
+}
+
+.excerpt-line-badge {
+  color: var(--primary);
+  font-weight: 700;
+  font-size: 0.725rem;
+  background-color: rgba(230, 106, 61, 0.15);
+  padding: 1px 5px;
+  border-radius: 3px;
+}
+
+.excerpt-signal-pill {
+  font-size: 0.675rem;
+  color: var(--accent-info);
+  background-color: rgba(82, 118, 184, 0.15);
+  padding: 1px 4px;
+  border-radius: 3px;
+}
+
+.excerpt-code {
+  color: var(--ink-text);
+  white-space: pre-wrap;
+  word-break: break-all;
+  margin: 0;
+  font-family: inherit;
+}
+
+.no-excerpts-notice {
+  padding: 0.85rem 1rem;
+  font-size: 0.8rem;
+  color: var(--text-dim);
+  font-style: italic;
+}
+
+/* Diagnostic Reasoning Section */
+.section-title-toggle {
+  display: flex;
+  justify-content: space-between;
+  align-items: center;
+  cursor: pointer;
+  user-select: none;
+  padding: 0.4rem 0;
+}
+
+.toggle-btn-indicator {
+  font-size: 0.75rem;
+  font-weight: 600;
+  color: var(--primary);
+}
+
+.reasoning-chain-steps {
+  display: flex;
+  flex-direction: column;
+  margin-top: 0.75rem;
+}
+
+.reasoning-step-item {
+  display: flex;
+  gap: 0.85rem;
+  position: relative;
+}
+
+.step-marker-col {
+  display: flex;
+  flex-direction: column;
+  align-items: center;
+  width: 24px;
+}
+
+.step-index-pill {
+  width: 22px;
+  height: 22px;
+  border-radius: 50%;
+  background-color: var(--primary);
+  color: #ffffff;
+  font-size: 0.725rem;
+  font-weight: 700;
+  display: flex;
+  align-items: center;
+  justify-content: center;
+  flex-shrink: 0;
+}
+
+.step-line {
+  width: 2px;
+  flex: 1;
+  background-color: var(--border-accent);
+  min-height: 20px;
+  margin: 4px 0;
+}
+
+.step-content {
+  flex: 1;
+  padding-bottom: 1rem;
+}
+
+.step-text {
+  font-size: 0.875rem;
+  color: var(--text-main);
+  line-height: 1.5;
+  margin: 0;
+}
+
+/* Alternative Hypotheses (Differential Diagnosis) */
+.alternatives-grid {
+  display: grid;
+  grid-template-columns: repeat(auto-fit, minmax(280px, 1fr));
+  gap: 0.85rem;
+}
+
+.alternative-card {
+  background-color: var(--bg-panel-subtle);
+  border: 1px solid var(--border-color);
+  border-radius: 6px;
+  padding: 0.85rem 1rem;
+  display: flex;
+  flex-direction: column;
+  gap: 0.5rem;
+}
+
+.alt-header {
+  display: flex;
+  justify-content: space-between;
+  align-items: baseline;
+  gap: 0.5rem;
+}
+
+.alt-title {
+  font-size: 0.9rem;
+  font-weight: 600;
+  color: var(--text-main);
+}
+
+.alt-status-pill {
+  font-size: 0.675rem;
+  font-weight: 700;
+  padding: 1px 6px;
+  border-radius: 999px;
+  white-space: nowrap;
+}
+
+.status-ruled-out {
+  background-color: rgba(217, 76, 61, 0.12);
+  color: var(--status-critical);
+  border: 1px solid rgba(217, 76, 61, 0.3);
+}
+
+.status-less-likely {
+  background-color: rgba(229, 138, 54, 0.12);
+  color: var(--status-high);
+  border: 1px solid rgba(229, 138, 54, 0.3);
+}
+
+.status-alt {
+  background-color: rgba(82, 118, 184, 0.12);
+  color: var(--accent-info);
+  border: 1px solid rgba(82, 118, 184, 0.3);
+}
+
+.alt-rationale-box {
+  font-size: 0.8rem;
+  color: var(--text-muted);
+  line-height: 1.45;
+  background-color: var(--bg-panel);
+  border-left: 2px solid var(--border-accent);
+  padding: 0.4rem 0.65rem;
+  border-radius: 0 4px 4px 0;
+}
+
+.rationale-tag {
+  font-weight: 600;
+  color: var(--text-main);
+  display: block;
+  margin-bottom: 0.15rem;
+  font-size: 0.725rem;
+}
+
+.alt-evidence-row {
+  font-size: 0.75rem;
+  color: var(--text-dim);
+}
+
+.alt-evidence-label {
+  font-weight: 600;
+  margin-right: 0.35rem;
+}
+
+/* Categorized Diagnostic Checks */
+.checks-header-row {
+  display: flex;
+  justify-content: space-between;
+  align-items: baseline;
+  flex-wrap: wrap;
+  gap: 0.5rem;
+  margin-bottom: 0.75rem;
+}
+
+.checks-safety-note {
+  font-size: 0.725rem;
+  color: var(--text-dim);
+}
+
+.structured-checks-list {
+  display: flex;
+  flex-direction: column;
+  gap: 0.75rem;
+}
+
+.structured-check-item {
+  background-color: var(--bg-panel-subtle);
+  border: 1px solid var(--border-color);
+  border-radius: 6px;
+  padding: 0.85rem 1rem;
+  display: flex;
+  flex-direction: column;
+  gap: 0.5rem;
+}
+
+.check-item-top {
+  display: flex;
+  align-items: baseline;
+  gap: 0.75rem;
+}
+
+.check-type-pill {
+  font-size: 0.675rem;
+  font-weight: 700;
+  padding: 2px 7px;
+  border-radius: 4px;
+  white-space: nowrap;
+  font-family: var(--font-mono);
+}
+
+.badge-check-readonly {
+  background-color: var(--success-bg);
+  color: var(--status-low);
+  border: 1px solid var(--success-border);
+}
+
+.badge-check-active {
+  background-color: rgba(229, 138, 54, 0.12);
+  color: var(--status-high);
+  border: 1px solid rgba(229, 138, 54, 0.3);
+}
+
+.badge-check-mitigation {
+  background-color: rgba(217, 76, 61, 0.12);
+  color: var(--status-critical);
+  border: 1px solid rgba(217, 76, 61, 0.3);
+}
+
+.check-text-content {
+  font-size: 0.875rem;
+  color: var(--text-main);
+  font-weight: 500;
+  line-height: 1.45;
+}
+
+.command-hint-box {
+  display: flex;
+  align-items: center;
+  justify-content: space-between;
+  gap: 0.5rem;
+  background-color: var(--ink-950);
+  border: 1px solid var(--ink-700);
+  border-radius: 4px;
+  padding: 0.45rem 0.75rem;
+  margin-top: 0.25rem;
+}
+
+.command-code {
+  font-family: var(--font-mono);
+  font-size: 0.775rem;
+  color: var(--ink-text);
+  overflow-x: auto;
+  white-space: nowrap;
+}
+
+.copy-command-btn {
+  background-color: var(--ink-800);
+  border: 1px solid var(--ink-700);
+  color: var(--ink-muted);
+  font-size: 0.725rem;
+  font-weight: 600;
+  padding: 0.2rem 0.55rem;
+  border-radius: 4px;
+  cursor: pointer;
+  white-space: nowrap;
+  transition: all 0.15s ease;
+}
+
+.copy-command-btn:hover {
+  background-color: var(--primary);
+  color: #ffffff;
+  border-color: var(--primary);
+}
+
+.checks-disclaimer-text {
+  font-size: 0.725rem;
+  color: var(--text-dim);
+  margin-top: 0.65rem;
+  font-style: italic;
+}
+
+.uncalibrated-disclaimer {
+  display: block;
+  font-size: 0.7rem;
+  color: var(--text-dim);
+  margin-top: 0.5rem;
+  font-style: italic;
 }
 
 .symptoms-chips {
