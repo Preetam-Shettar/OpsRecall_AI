@@ -496,5 +496,392 @@ class IncidentService:
             "recent_incidents": recent,
         }
 
+    def _get_storage_provider(self) -> str:
+        """
+        Determines the active memory storage provider.
+        Does NOT infer cloud connectivity from bank_id; checks valid cloud credentials.
+        """
+        from app.config import HINDSIGHT_API_KEY, HINDSIGHT_BASE_URL
+        is_cloud = bool(
+            HINDSIGHT_BASE_URL
+            and HINDSIGHT_API_KEY
+            and HINDSIGHT_API_KEY.strip()
+            and HINDSIGHT_API_KEY.strip() != "replace_with_your_key"
+        )
+        return "Hindsight Cloud" if is_cloud else "Local SQLite Fallback"
+
+    def _parse_memory_content(self, content: str) -> dict[str, Any]:
+        """
+        Extracts structured operational fields from memory content text as fallback
+        when the parent incident record is missing or was deleted.
+        """
+        extracted = {
+            "incident_id": None,
+            "service": None,
+            "environment": "production",
+            "symptoms": None,
+            "root_cause": "Verified resolution recorded in memory bank.",
+            "resolution": "Applied verified remediation.",
+            "outcome": "resolved",
+            "engineer": None,
+            "timestamp": None,
+            "severity": "medium",
+        }
+        if not content:
+            return extracted
+
+        for line in content.splitlines():
+            line_str = line.strip()
+            if line_str.startswith("Incident ID:"):
+                extracted["incident_id"] = line_str.split(":", 1)[1].strip()
+            elif line_str.startswith("Service:"):
+                extracted["service"] = line_str.split(":", 1)[1].strip()
+            elif line_str.startswith("Environment:"):
+                env_val = line_str.split(":", 1)[1].strip().lower()
+                extracted["environment"] = env_val
+                if env_val == "production":
+                    extracted["severity"] = "critical"
+            elif line_str.startswith("Symptoms:"):
+                extracted["symptoms"] = line_str.split(":", 1)[1].strip()
+            elif line_str.startswith("Confirmed root cause:"):
+                extracted["root_cause"] = line_str.split(":", 1)[1].strip()
+            elif line_str.startswith("Verified resolution:"):
+                extracted["resolution"] = line_str.split(":", 1)[1].strip()
+            elif line_str.startswith("Outcome:"):
+                extracted["outcome"] = line_str.split(":", 1)[1].strip()
+            elif line_str.startswith("Verification:"):
+                v_text = line_str.split(":", 1)[1].strip()
+                extracted["engineer"] = v_text.replace("confirmed by engineer", "").strip()
+            elif line_str.startswith("Timestamp:"):
+                extracted["timestamp"] = line_str.split(":", 1)[1].strip()
+
+        return extracted
+
+    def _get_citation_map(self) -> tuple[dict[str, int], dict[str, list[dict[str, Any]]]]:
+        """
+        Calculates de-duplicated recall citation statistics from actual incident analyses.
+        Counting rule: an incident citing a target memory (even multiple times in its analysis)
+        is counted exactly once for that memory to prevent inflation or duplicate counts.
+        """
+        citation_counts: dict[str, int] = {}
+        citation_refs: dict[str, list[dict[str, Any]]] = {}
+
+        with get_connection() as conn:
+            rows = conn.execute("SELECT id, title, service, environment, analysis_json FROM incidents").fetchall()
+
+        for row in rows:
+            if not row["analysis_json"]:
+                continue
+            try:
+                analysis = json.loads(row["analysis_json"])
+                insights = analysis.get("related_memory_insights", [])
+                cited_in_this_incident: set[str] = set()
+                for item in insights:
+                    if isinstance(item, dict) and item.get("incident_id"):
+                        cited_in_this_incident.add(str(item["incident_id"]).strip())
+
+                for target_id in cited_in_this_incident:
+                    citation_counts[target_id] = citation_counts.get(target_id, 0) + 1
+                    if target_id not in citation_refs:
+                        citation_refs[target_id] = []
+                    citation_refs[target_id].append({
+                        "id": row["id"],
+                        "title": row["title"],
+                        "service": row["service"],
+                        "environment": row["environment"],
+                    })
+            except Exception:
+                pass
+
+        return citation_counts, citation_refs
+
+    def list_memories(
+        self,
+        search: str | None = None,
+        service: str | None = None,
+        severity: str | None = None,
+        environment: str | None = None,
+        verified: bool | None = True,
+        page: int = 1,
+        page_size: int = 10,
+    ) -> dict[str, Any]:
+        """
+        Retrieves a paginated list of incident memories from the database.
+        Default: verified=True (only verified memories in the trusted catalog).
+        """
+        # Defensive parameter normalization (supports direct Python calls with Query defaults)
+        if hasattr(page, "default"):
+            page = 1
+        else:
+            try:
+                page = int(page)
+            except (ValueError, TypeError):
+                page = 1
+
+        if hasattr(page_size, "default"):
+            page_size = 10
+        else:
+            try:
+                page_size = int(page_size)
+            except (ValueError, TypeError):
+                page_size = 10
+
+        search = None if hasattr(search, "default") else (str(search) if search else None)
+        service = None if hasattr(service, "default") else (str(service) if service else None)
+        severity = None if hasattr(severity, "default") else (str(severity) if severity else None)
+        environment = None if hasattr(environment, "default") else (str(environment) if environment else None)
+        if hasattr(verified, "default"):
+            verified = True
+        elif verified is not None:
+            verified = bool(verified)
+
+        if page < 1:
+            page = 1
+        if page_size < 1:
+            page_size = 10
+        elif page_size > 100:
+            page_size = 100
+
+        citation_counts, _ = self._get_citation_map()
+        storage_provider = self._get_storage_provider()
+
+        with get_connection() as conn:
+            cursor = conn.execute("PRAGMA table_info(incidents)")
+            inc_cols = [r["name"] for r in cursor.fetchall()]
+            has_severity = "severity" in inc_cols
+            sev_sql = "i.severity" if has_severity else "NULL as severity"
+
+            query = f"""
+            SELECT m.*, i.title, {sev_sql}, i.environment as inc_env,
+                   i.description as inc_desc, i.resolution_json, i.sanitized_logs, i.logs
+            FROM memories m
+            LEFT JOIN incidents i ON m.incident_id = i.id
+            ORDER BY m.created_at DESC, m.id DESC
+            """
+            rows = conn.execute(query).fetchall()
+
+        all_memories = []
+        for r in rows:
+            m_dict = dict(r)
+            content = m_dict.get("content") or ""
+            fallback = self._parse_memory_content(content)
+
+            has_parent = r["title"] is not None
+            inc_id = r["incident_id"] or fallback.get("incident_id") or f"MEM-{r['id']}"
+            svc = r["service"] or fallback.get("service") or "unknown"
+            env = r["inc_env"] or fallback.get("environment") or "production"
+
+            res_obj = None
+            if r["resolution_json"]:
+                try:
+                    res_obj = json.loads(r["resolution_json"])
+                except Exception:
+                    pass
+
+            root_cause = (
+                (res_obj.get("root_cause") if res_obj else None)
+                or fallback.get("root_cause")
+                or "Confirmed root cause recorded in memory bank."
+            )
+            resolution = (
+                (res_obj.get("resolution") if res_obj else None)
+                or fallback.get("resolution")
+                or "Verified remediation applied."
+            )
+            engineer = (res_obj.get("engineer") if res_obj else None) or fallback.get("engineer")
+            outcome = r["outcome"] or (res_obj.get("outcome") if res_obj else None) or "resolved"
+
+            sev = r["severity"] or fallback.get("severity") or ("critical" if env == "production" else "medium")
+            title = r["title"] or f"{svc.upper()} - {root_cause[:45]}"
+
+            is_verified = bool(r["verified"] if r["verified"] is not None else 1)
+            rec_count = citation_counts.get(inc_id, 0)
+
+            all_memories.append({
+                "id": r["id"],
+                "incident_id": inc_id,
+                "title": title,
+                "service": svc,
+                "environment": env,
+                "severity": sev.lower(),
+                "root_cause": root_cause,
+                "resolution": resolution,
+                "outcome": outcome,
+                "verified": is_verified,
+                "engineer": engineer,
+                "created_at": r["created_at"],
+                "storage_provider": storage_provider,
+                "bank_id": r["bank_id"] or "opsrecall-incidents",
+                "recall_count": rec_count,
+                "has_parent_incident": has_parent,
+            })
+
+        # Apply filtering
+        filtered = all_memories
+
+        # Default: True (only verified records)
+        if verified is not None:
+            filtered = [m for m in filtered if m["verified"] is verified]
+
+        if service:
+            s_clean = service.lower().strip()
+            filtered = [m for m in filtered if m["service"].lower() == s_clean]
+
+        if severity:
+            sev_clean = severity.lower().strip()
+            filtered = [m for m in filtered if m["severity"] == sev_clean]
+
+        if environment:
+            env_clean = environment.lower().strip()
+            filtered = [m for m in filtered if m["environment"].lower() == env_clean]
+
+        if search:
+            q = search.lower().strip()
+            filtered = [
+                m for m in filtered
+                if q in m["incident_id"].lower()
+                or q in m["service"].lower()
+                or q in m["title"].lower()
+                or q in m["root_cause"].lower()
+                or q in m["resolution"].lower()
+            ]
+
+        total = len(filtered)
+        start_idx = (page - 1) * page_size
+        end_idx = start_idx + page_size
+        items = filtered[start_idx:end_idx]
+        total_pages = (total + page_size - 1) // page_size if total > 0 else 1
+
+        return {
+            "items": items,
+            "total": total,
+            "page": page,
+            "page_size": page_size,
+            "total_pages": total_pages,
+            "verified_only": verified is True,
+        }
+
+    def get_memory_detail(self, memory_id: int | str) -> dict[str, Any] | None:
+        """
+        Retrieves detailed memory intelligence for a specific record.
+        Includes sanitized evidence logs, root cause, resolution, and citation references.
+        Handles missing parent incidents gracefully.
+        """
+        citation_counts, citation_refs = self._get_citation_map()
+        storage_provider = self._get_storage_provider()
+
+        with get_connection() as conn:
+            cursor = conn.execute("PRAGMA table_info(incidents)")
+            inc_cols = [r["name"] for r in cursor.fetchall()]
+            has_severity = "severity" in inc_cols
+            sev_sql = "i.severity" if has_severity else "NULL as severity"
+
+            # Check if memory_id is integer or string incident_id
+            int_val = None
+            try:
+                int_val = int(memory_id)
+            except ValueError:
+                pass
+
+            if int_val is not None:
+                row = conn.execute(
+                    f"""
+                    SELECT m.*, i.id as inc_full_id, i.title, {sev_sql}, i.environment as inc_env,
+                           i.description as inc_desc, i.resolution_json, i.sanitized_logs, i.logs
+                    FROM memories m
+                    LEFT JOIN incidents i ON m.incident_id = i.id
+                    WHERE m.id = ?
+                    """,
+                    (int_val,),
+                ).fetchone()
+            else:
+                row = conn.execute(
+                    f"""
+                    SELECT m.*, i.id as inc_full_id, i.title, {sev_sql}, i.environment as inc_env,
+                           i.description as inc_desc, i.resolution_json, i.sanitized_logs, i.logs
+                    FROM memories m
+                    LEFT JOIN incidents i ON m.incident_id = i.id
+                    WHERE m.incident_id = ?
+                    ORDER BY m.id DESC LIMIT 1
+                    """,
+                    (str(memory_id),),
+                ).fetchone()
+
+            if not row:
+                return None
+
+            # Find related incident IDs sharing the same service
+            svc_name = row["service"]
+            related_ids = []
+            if svc_name:
+                rel_rows = conn.execute(
+                    "SELECT id FROM incidents WHERE service = ? AND id != ? LIMIT 5",
+                    (svc_name, row["incident_id"] or ""),
+                ).fetchall()
+                related_ids = [r["id"] for r in rel_rows]
+
+        content = row["content"] or ""
+        fallback = self._parse_memory_content(content)
+        has_parent = row["title"] is not None
+
+        inc_id = row["incident_id"] or fallback.get("incident_id") or f"MEM-{row['id']}"
+        svc = row["service"] or fallback.get("service") or "unknown"
+        env = row["inc_env"] or fallback.get("environment") or "production"
+
+        res_obj = None
+        if row["resolution_json"]:
+            try:
+                res_obj = json.loads(row["resolution_json"])
+            except Exception:
+                pass
+
+        root_cause = (
+            (res_obj.get("root_cause") if res_obj else None)
+            or fallback.get("root_cause")
+            or "Confirmed root cause recorded in memory bank."
+        )
+        resolution = (
+            (res_obj.get("resolution") if res_obj else None)
+            or fallback.get("resolution")
+            or "Verified remediation applied."
+        )
+        engineer = (res_obj.get("engineer") if res_obj else None) or fallback.get("engineer")
+        outcome = row["outcome"] or (res_obj.get("outcome") if res_obj else None) or "resolved"
+        sev = row["severity"] or fallback.get("severity") or ("critical" if env == "production" else "medium")
+        title = row["title"] or f"{svc.upper()} - {root_cause[:45]}"
+
+        # Always sanitize evidence logs before returning
+        raw_logs = row["sanitized_logs"] or row["logs"]
+        evidence_logs = sanitize_logs(raw_logs) if raw_logs else fallback.get("symptoms")
+
+        # De-duplicated recall citations
+        rec_count = citation_counts.get(inc_id, 0)
+        recalled_in = citation_refs.get(inc_id, [])
+
+        return {
+            "id": row["id"],
+            "incident_id": inc_id,
+            "title": title,
+            "service": svc,
+            "environment": env,
+            "severity": sev.lower(),
+            "root_cause": root_cause,
+            "resolution": resolution,
+            "outcome": outcome,
+            "verified": bool(row["verified"] if row["verified"] is not None else 1),
+            "engineer": engineer,
+            "created_at": row["created_at"],
+            "storage_provider": storage_provider,
+            "bank_id": row["bank_id"] or "opsrecall-incidents",
+            "recall_count": rec_count,
+            "has_parent_incident": has_parent,
+            "content": content,
+            "context": row["context"],
+            "evidence_logs": evidence_logs,
+            "symptoms": row["inc_desc"] or fallback.get("symptoms"),
+            "related_incident_ids": related_ids,
+            "recalled_in_incidents": recalled_in,
+        }
+
 
 incident_service = IncidentService()
