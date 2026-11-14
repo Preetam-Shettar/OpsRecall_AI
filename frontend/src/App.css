@@ -600,19 +600,42 @@ body {
 }
 
 .primary-action-btn {
-  background-color: var(--primary);
-  color: #fff;
-  border: none;
+  background-color: transparent;
+  color: var(--primary);
+  border: 1px solid var(--primary);
   border-radius: 6px;
   padding: 0.55rem 1.15rem;
   font-size: 0.85rem;
   font-weight: 600;
   cursor: pointer;
-  transition: background-color 0.15s ease;
+  transition: background-color 0.15s ease, color 0.15s ease;
 }
 
 .primary-action-btn:hover {
-  background-color: var(--primary-hover);
+  background-color: var(--primary-subtle);
+}
+
+/* Secondary buttons (Refresh, etc.) - transparent with subtle border */
+.secondary-btn {
+  background-color: transparent;
+  color: var(--text-main);
+  border: 1px solid var(--border-color);
+  border-radius: 6px;
+  padding: 0.55rem 1.15rem;
+  font-size: 0.85rem;
+  font-weight: 600;
+  cursor: pointer;
+  transition: background-color 0.15s ease, border-color 0.15s ease;
+}
+
+.secondary-btn:hover {
+  background-color: var(--primary-subtle);
+  border-color: var(--border-accent);
+}
+
+.secondary-btn:disabled {
+  opacity: 0.7;
+  cursor: not-allowed;
 }
 
 /* Stats Cards */
