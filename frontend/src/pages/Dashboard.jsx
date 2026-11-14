@@ -37,6 +37,7 @@ export default function Dashboard({
     note: 'No resolution telemetry available yet.',
   };
   const recurringPatterns = insights.recurring_patterns || [];
+  const actionsSummary = dashboard?.actions_summary || insights?.actions_summary || {};
 
   // Memory Intelligence Data
   const memoryIntel = dashboard?.memory_intelligence || {};
@@ -552,6 +553,58 @@ export default function Dashboard({
           </div>
         </div>
       </div>
+
+      {/* 4b. Response Action Telemetry (Part 4) */}
+      {actionsSummary && actionsSummary.total_actions > 0 && (
+        <div className="response-telemetry-banner mb-4">
+          <div className="response-telemetry-card">
+            <div className="response-telemetry-left">
+              <div className="telemetry-badge-row">
+                <span className="spotlight-badge">⚡ Response Workflow Telemetry</span>
+                <span className="telemetry-summary-tag">
+                  {actionsSummary.completed_actions} of {actionsSummary.total_actions} tasks finished
+                </span>
+              </div>
+              <h4>Guided Incident Action Execution</h4>
+              <p>
+                Engineer-driven diagnostic validations and remediations across active incidents.
+                {actionsSummary.blocked_actions > 0 && (
+                  <span className="blocked-alert-inline">
+                    {' '}⚠️ <strong>{actionsSummary.blocked_actions} task(s)</strong> currently flagged as blocked.
+                  </span>
+                )}
+              </p>
+              <div className="telemetry-progress-track">
+                <div
+                  className="telemetry-progress-fill"
+                  style={{ width: `${actionsSummary.completion_rate || 0}%` }}
+                />
+              </div>
+            </div>
+
+            <div className="response-telemetry-stats">
+              <div className="res-stat-box stat-comp">
+                <span className="res-stat-num">{actionsSummary.completed_actions}</span>
+                <span className="res-stat-lbl">Completed</span>
+              </div>
+              <div className="res-stat-box stat-prog">
+                <span className="res-stat-num">{actionsSummary.in_progress_actions}</span>
+                <span className="res-stat-lbl">In Progress</span>
+              </div>
+              <div className="res-stat-box stat-pend">
+                <span className="res-stat-num">{actionsSummary.pending_actions}</span>
+                <span className="res-stat-lbl">Pending</span>
+              </div>
+              {actionsSummary.blocked_actions > 0 && (
+                <div className="res-stat-box stat-block">
+                  <span className="res-stat-num">{actionsSummary.blocked_actions}</span>
+                  <span className="res-stat-lbl">Blocked</span>
+                </div>
+              )}
+            </div>
+          </div>
+        </div>
+      )}
 
       {/* 5. Recent Incidents Telemetry */}
       <section className="dashboard-section">

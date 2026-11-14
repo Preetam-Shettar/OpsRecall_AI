@@ -1,11 +1,15 @@
 import React, { useState } from 'react';
+import ActionPlanBoard from '../components/ActionPlanBoard';
 import AnalysisPanel from '../components/AnalysisPanel';
+import IncidentTimeline from '../components/IncidentTimeline';
 import MemoryMatchCard from '../components/MemoryMatchCard';
 import ResolutionForm from '../components/ResolutionForm';
 import { formatDate, formatStatus } from '../utils/formatters';
 
 export default function IncidentDetails({ incident, onSaveResolution, onBack }) {
-  const [activeTab, setActiveTab] = useState('analysis'); // 'analysis', 'logs', 'resolution'
+  const [activeTab, setActiveTab] = useState('analysis'); // 'analysis', 'response', 'logs', 'resolution'
+  const [responseSubTab, setResponseSubTab] = useState('actions'); // 'actions', 'timeline'
+  const [compiledFindings, setCompiledFindings] = useState('');
 
   if (!incident) {
     return (
@@ -20,6 +24,11 @@ export default function IncidentDetails({ incident, onSaveResolution, onBack }) 
 
   const statusInfo = formatStatus(incident.status);
   const memories = incident.related_memories || incident.analysis?.related_memory_insights || [];
+
+  function handleProceedToResolution(findingsText) {
+    setCompiledFindings(findingsText);
+    setActiveTab('resolution');
+  }
 
   return (
     <div className="page incident-details-page">
@@ -57,6 +66,13 @@ export default function IncidentDetails({ incident, onSaveResolution, onBack }) 
         </button>
         <button
           type="button"
+          className={`tab-btn ${activeTab === 'response' ? 'active' : ''}`}
+          onClick={() => setActiveTab('response')}
+        >
+          ⚡ Guided Response &amp; Actions
+        </button>
+        <button
+          type="button"
           className={`tab-btn ${activeTab === 'logs' ? 'active' : ''}`}
           onClick={() => setActiveTab('logs')}
         >
@@ -79,6 +95,39 @@ export default function IncidentDetails({ incident, onSaveResolution, onBack }) 
 
             {/* Analysis details */}
             <AnalysisPanel analysis={incident.analysis} />
+          </div>
+        )}
+
+        {activeTab === 'response' && (
+          <div className="details-response-tab">
+            {/* Sub-view switcher for response workspace */}
+            <div className="response-subnav">
+              <button
+                type="button"
+                className={`response-subnav-btn ${responseSubTab === 'actions' ? 'active' : ''}`}
+                onClick={() => setResponseSubTab('actions')}
+              >
+                📋 Action Plan &amp; Diagnostic Tasks
+              </button>
+              <button
+                type="button"
+                className={`response-subnav-btn ${responseSubTab === 'timeline' ? 'active' : ''}`}
+                onClick={() => setResponseSubTab('timeline')}
+              >
+                ⏱️ Chronological Timeline &amp; Audit Trail
+              </button>
+            </div>
+
+            {responseSubTab === 'actions' && (
+              <ActionPlanBoard
+                incident={incident}
+                onProceedToResolution={handleProceedToResolution}
+              />
+            )}
+
+            {responseSubTab === 'timeline' && (
+              <IncidentTimeline incidentId={incident.id} />
+            )}
           </div>
         )}
 
@@ -108,6 +157,7 @@ export default function IncidentDetails({ incident, onSaveResolution, onBack }) 
             <ResolutionForm
               incident={incident}
               onSaveResolution={onSaveResolution}
+              initialResolutionNotes={compiledFindings}
             />
           </div>
         )}

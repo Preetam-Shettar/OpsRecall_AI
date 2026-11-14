@@ -57,30 +57,30 @@ export default function AnalysisPanel({ analysis }) {
     <div className="analysis-panel-root">
       {/* 1. Human Verification Advisory Banner */}
       <div className="human-verification-advisory-banner">
-        <span className="advisory-icon">⚠️</span>
-        <div className="advisory-text">
-          <strong>Advisory AI Investigation:</strong> AI-generated diagnosis is an evidence-based hypothesis.
-          Engineer verification is required before any resolution becomes trusted institutional memory.
-        </div>
+        <span className="advisory-badge">Advisory</span>
+        <span className="advisory-text">
+          AI-generated diagnosis is an evidence-based hypothesis. Engineer verification is required before any resolution becomes trusted institutional memory.
+        </span>
       </div>
 
       {/* 2. Header with Summary and Confidence Badges */}
       <div className="analysis-header-card">
         <div className="analysis-badges-row">
-          <span className={`confidence-badge ${confidenceInfo.badgeClass}`}>
-            Confidence: {confidenceInfo.label}
+          <span className={`clean-badge ${confidenceInfo.badgeClass}`}>
+            ● Confidence: {confidenceInfo.label}
           </span>
-          {analysis.analysis_source === 'groq' ? (
-            <span className="source-badge source-groq">Groq AI Active</span>
-          ) : (
-            <span className="source-badge source-local">
-              {analysis.analysis_source === 'local_fallback' ? 'Local Fallback Engine' : 'Deterministic Analysis'}
-            </span>
-          )}
-          <span className="hypothesis-indicator-pill">AI Hypothesis — Unconfirmed</span>
+          <span className="clean-badge engine-badge">
+            {analysis.analysis_source === 'groq' ? 'Groq AI Active' : 'Deterministic Analysis'}
+          </span>
+          <span className="clean-badge hypothesis-badge">
+            AI Hypothesis — Pending Review
+          </span>
         </div>
 
-        <p className="analysis-summary-text">{analysis.summary}</p>
+        <div className="analysis-summary-block">
+          <h4 className="analysis-lead-heading">AI Diagnostic Assessment</h4>
+          <p className="analysis-summary-text">{analysis.summary}</p>
+        </div>
 
         {analysis.analysis_notice && (
           <div className="analysis-notice-box">

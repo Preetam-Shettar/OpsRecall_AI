@@ -2,6 +2,42 @@ import React, { useState } from 'react';
 import { api } from '../services/api';
 import { formatDate } from '../utils/formatters';
 
+export function parseMemoryLesson(text) {
+  if (!text || typeof text !== 'string') {
+    return { isStructured: false, text: text || '' };
+  }
+
+  const clean = text.replace(/\r\n/g, '\n').trim();
+  const hasKeys = /Incident ID:|Service:|Environment:|Symptoms:|Confirmed root cause:|Verified resolution:/i.test(clean);
+
+  if (!hasKeys) {
+    return { isStructured: false, text: clean };
+  }
+
+  const extract = (pattern) => {
+    const match = clean.match(pattern);
+    return match ? match[1].trim() : null;
+  };
+
+  const incidentId = extract(/Incident ID:\s*([^\n]+?)(?=(Service:|Environment:|Symptoms:|Confirmed root cause:|Verified resolution:|Outcome:|Verification:|Timestamp:|$))/i);
+  const service = extract(/Service:\s*([^\n]+?)(?=(Environment:|Symptoms:|Confirmed root cause:|Verified resolution:|Outcome:|Verification:|Timestamp:|$))/i);
+  const environment = extract(/Environment:\s*([^\n]+?)(?=(Symptoms:|Confirmed root cause:|Verified resolution:|Outcome:|Verification:|Timestamp:|$))/i);
+  const symptoms = extract(/Symptoms:\s*([^\n]+?)(?=(Confirmed root cause:|Verified resolution:|Outcome:|Verification:|Timestamp:|$))/i);
+  const rootCause = extract(/Confirmed root cause:\s*([^\n]+?)(?=(Verified resolution:|Outcome:|Verification:|Timestamp:|$))/i);
+  const resolution = extract(/Verified resolution:\s*([^\n]+?)(?=(Outcome:|Verification:|Timestamp:|$))/i);
+
+  return {
+    isStructured: true,
+    incidentId,
+    service,
+    environment,
+    symptoms,
+    rootCause,
+    resolution,
+    text: clean,
+  };
+}
+
 export default function MemoryMatchCard({ memories = [] }) {
   const [selectedIncidentId, setSelectedIncidentId] = useState(null);
   const [memoryDetail, setMemoryDetail] = useState(null);
@@ -79,37 +115,62 @@ export default function MemoryMatchCard({ memories = [] }) {
     <div className="memory-match-container">
       <div className="memory-card-header">
         <div className="memory-title-group">
-          <span className="memory-chip memory-chip-active">🧠 Hindsight Recall Active</span>
+          <span className="memory-chip-recall">● Recall Active</span>
           <h4>Related Past Incidents ({memories.length})</h4>
         </div>
-        <span className="memory-badge-verified">Verified Historical Resolutions</span>
+        <span className="memory-header-note">Verified historical context retrieved from institutional memory</span>
       </div>
-
-      <p className="memory-disclaimer">
-        <strong>Context note:</strong> Prior verified fixes are retrieved as context to avoid repetitive debugging,
-        not as proof that causes are identical.
-      </p>
 
       <div className="memory-items-list">
         {memories.map((mem, index) => {
-          const incId = mem.incident_id || mem.context || `INC-00${index + 1}`;
-          const content = mem.lesson || mem.content || '';
+          const rawContent = mem.lesson || mem.content || '';
+          const parsed = parseMemoryLesson(rawContent);
+          const incId = mem.incident_id || parsed.incidentId || mem.context || `INC-00${index + 1}`;
+          const service = mem.service || parsed.service;
+          const environment = mem.environment || parsed.environment;
 
           return (
-            <div key={`${incId}-${index}`} className="memory-item">
-              <div className="memory-item-top">
-                <span className="memory-ref-badge">{incId}</span>
-                {mem.service && <span className="memory-service-tag">{mem.service}</span>}
-                <span className="memory-verified-tag">✓ Confirmed Fix</span>
+            <div key={`${incId}-${index}`} className="memory-item-clean">
+              <div className="memory-item-clean-top">
+                <div className="memory-meta-group">
+                  <span className="memory-clean-id">{incId}</span>
+                  {service && <span className="memory-clean-tag service">{service}</span>}
+                  {environment && <span className="memory-clean-tag env">{environment}</span>}
+                  <span className="memory-clean-verified">✓ Verified Resolution</span>
+                </div>
                 <button
                   type="button"
-                  className="inspect-history-btn"
-                  onClick={() => handleInspectHistorical(incId, content, mem.service)}
+                  className="memory-inspect-clean-btn"
+                  onClick={() => handleInspectHistorical(incId, parsed.resolution || rawContent, service)}
                 >
-                  🔍 Inspect Verified Fix
+                  Inspect Full Record →
                 </button>
               </div>
-              <p className="memory-lesson-text">{content}</p>
+
+              {parsed.isStructured && (parsed.rootCause || parsed.resolution) ? (
+                <div className="memory-structured-body">
+                  {parsed.rootCause && (
+                    <div className="memory-field-line">
+                      <span className="memory-kicker">Root Cause</span>
+                      <p className="memory-root-cause">{parsed.rootCause}</p>
+                    </div>
+                  )}
+                  {parsed.resolution && (
+                    <div className="memory-field-line memory-fix-box">
+                      <span className="memory-kicker fix-kicker">Verified Fix</span>
+                      <p className="memory-fix-text">{parsed.resolution}</p>
+                    </div>
+                  )}
+                  {parsed.symptoms && (
+                    <div className="memory-symptoms-line">
+                      <span className="memory-symptoms-label">Prior Context:</span>{' '}
+                      <span className="memory-symptoms-text">{parsed.symptoms}</span>
+                    </div>
+                  )}
+                </div>
+              ) : (
+                <p className="memory-lesson-text">{rawContent}</p>
+              )}
             </div>
           );
         })}
