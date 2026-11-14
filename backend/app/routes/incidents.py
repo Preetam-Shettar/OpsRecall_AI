@@ -53,5 +53,6 @@ def save_resolution(incident_id: str, payload: IncidentResolution):
 
 
 @router.get("/api/dashboard/summary")
+@router.get("/api/dashboard/analytics")
 def dashboard_summary():
     return incident_service.dashboard_summary()

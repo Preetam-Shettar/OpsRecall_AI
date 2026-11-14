@@ -47,6 +47,16 @@ def test_incident_lifecycle(tmp_path, monkeypatch):
     assert summary["total_incidents"] >= 1
     assert summary["resolved_incidents"] >= 1
     assert summary["stored_memories"] >= 1
+    assert "critical_incidents" in summary
+    assert "by_severity" in summary
+    assert "by_service" in summary
+    assert "resolution_trends" in summary
+    assert "operational_insights" in summary
+    assert "memory_intelligence" in summary
+    assert "most_affected_services" in summary["operational_insights"]
+    assert "frequently_occurring_types" in summary["operational_insights"]
+    assert "avg_resolution_time" in summary["operational_insights"]
+    assert "memory_system_status" in summary["memory_intelligence"]
 
     # 5. Create Incident B (Scenario B: Checkout API connection timeout)
     # Memory should be recalled and included in analysis!

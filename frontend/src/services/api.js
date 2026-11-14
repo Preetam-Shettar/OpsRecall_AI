@@ -26,6 +26,8 @@ export const api = {
 
   getDashboardSummary: () => request('/api/dashboard/summary'),
 
+  getDashboardAnalytics: () => request('/api/dashboard/analytics'),
+
   listIncidents: (params = {}) => {
     const searchParams = new URLSearchParams();
     if (params.search) searchParams.append('search', params.search);

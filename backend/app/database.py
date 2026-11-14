@@ -19,6 +19,7 @@ def init_db():
                 title TEXT NOT NULL,
                 service TEXT,
                 environment TEXT,
+                severity TEXT DEFAULT 'medium',
                 description TEXT,
                 logs TEXT,
                 sanitized_logs TEXT,
@@ -47,6 +48,12 @@ def init_db():
             )
             """
         )
+        # Migrate any missing columns if incidents table was created previously with older schema
+        cursor = conn.execute("PRAGMA table_info(incidents)")
+        inc_columns = [row["name"] for row in cursor.fetchall()]
+        if "severity" not in inc_columns:
+            conn.execute("ALTER TABLE incidents ADD COLUMN severity TEXT DEFAULT 'medium'")
+
         # Migrate any missing columns if memories table was created previously with older schema
         cursor = conn.execute("PRAGMA table_info(memories)")
         columns = [row["name"] for row in cursor.fetchall()]

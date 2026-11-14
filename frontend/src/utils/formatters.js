@@ -28,6 +28,21 @@ export function formatConfidence(level) {
   }
 }
 
+export function formatSeverity(severity) {
+  const normalized = (severity || 'medium').toLowerCase();
+  switch (normalized) {
+    case 'critical':
+      return { label: 'Critical', badgeClass: 'severity-critical' };
+    case 'high':
+      return { label: 'High', badgeClass: 'severity-high' };
+    case 'low':
+      return { label: 'Low', badgeClass: 'severity-low' };
+    case 'medium':
+    default:
+      return { label: 'Medium', badgeClass: 'severity-medium' };
+  }
+}
+
 export function formatStatus(status) {
   const normalized = (status || 'new').toLowerCase();
   switch (normalized) {
